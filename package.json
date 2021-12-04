@@ -20,7 +20,8 @@
   "homepage": "https://github.com/The-Red-Rabbit/BA_Project#readme",
   "dependencies": {
     "express": "^4.17.1",
-    "ol": "^6.9.0"
+    "ol": "^6.9.0",
+    "ol-hashed": "^2.1.0"
   },
   "devDependencies": {
     "parcel-bundler": "^1.12.5"

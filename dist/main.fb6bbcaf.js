@@ -11889,7 +11889,7607 @@ function (_super) {
 
 var _default = OSM;
 exports.default = _default;
-},{"./XYZ.js":"../node_modules/ol/source/XYZ.js"}],"../node_modules/ol/layer/Property.js":[function(require,module,exports) {
+},{"./XYZ.js":"../node_modules/ol/source/XYZ.js"}],"../node_modules/ol/Feature.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.createStyleFunction = createStyleFunction;
+exports.default = void 0;
+
+var _Object = _interopRequireDefault(require("./Object.js"));
+
+var _EventType = _interopRequireDefault(require("./events/EventType.js"));
+
+var _asserts = require("./asserts.js");
+
+var _events = require("./events.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/Feature
+ */
+
+
+/**
+ * @typedef {typeof Feature|typeof import("./render/Feature.js").default} FeatureClass
+ */
+
+/**
+ * @typedef {Feature<import("./geom/Geometry.js").default>|import("./render/Feature.js").default} FeatureLike
+ */
+
+/***
+ * @template Return
+ * @typedef {import("./Observable").OnSignature<import("./Observable").EventTypes, import("./events/Event.js").default, Return> &
+ *   import("./Observable").OnSignature<import("./ObjectEventType").Types|'change:geometry', import("./Object").ObjectEvent, Return> &
+ *   import("./Observable").CombinedOnSignature<import("./Observable").EventTypes|import("./ObjectEventType").Types
+ *     |'change:geometry', Return>} FeatureOnSignature
+ */
+
+/***
+ * @template Geometry
+ * @typedef {Object<string, *> & { geometry?: Geometry }} ObjectWithGeometry
+ */
+
+/**
+ * @classdesc
+ * A vector object for geographic features with a geometry and other
+ * attribute properties, similar to the features in vector file formats like
+ * GeoJSON.
+ *
+ * Features can be styled individually with `setStyle`; otherwise they use the
+ * style of their vector layer.
+ *
+ * Note that attribute properties are set as {@link module:ol/Object} properties on
+ * the feature object, so they are observable, and have get/set accessors.
+ *
+ * Typically, a feature has a single geometry property. You can set the
+ * geometry using the `setGeometry` method and get it with `getGeometry`.
+ * It is possible to store more than one geometry on a feature using attribute
+ * properties. By default, the geometry used for rendering is identified by
+ * the property name `geometry`. If you want to use another geometry property
+ * for rendering, use the `setGeometryName` method to change the attribute
+ * property associated with the geometry for the feature.  For example:
+ *
+ * ```js
+ *
+ * import Feature from 'ol/Feature';
+ * import Polygon from 'ol/geom/Polygon';
+ * import Point from 'ol/geom/Point';
+ *
+ * var feature = new Feature({
+ *   geometry: new Polygon(polyCoords),
+ *   labelPoint: new Point(labelCoords),
+ *   name: 'My Polygon'
+ * });
+ *
+ * // get the polygon geometry
+ * var poly = feature.getGeometry();
+ *
+ * // Render the feature as a point using the coordinates from labelPoint
+ * feature.setGeometryName('labelPoint');
+ *
+ * // get the point geometry
+ * var point = feature.getGeometry();
+ * ```
+ *
+ * @api
+ * @template {import("./geom/Geometry.js").default} Geometry
+ */
+var Feature =
+/** @class */
+function (_super) {
+  __extends(Feature, _super);
+  /**
+   * @param {Geometry|ObjectWithGeometry<Geometry>} [opt_geometryOrProperties]
+   *     You may pass a Geometry object directly, or an object literal containing
+   *     properties. If you pass an object literal, you may include a Geometry
+   *     associated with a `geometry` key.
+   */
+
+
+  function Feature(opt_geometryOrProperties) {
+    var _this = _super.call(this) || this;
+    /***
+     * @type {FeatureOnSignature<import("./events").EventsKey>}
+     */
+
+
+    _this.on;
+    /***
+     * @type {FeatureOnSignature<import("./events").EventsKey>}
+     */
+
+    _this.once;
+    /***
+     * @type {FeatureOnSignature<void>}
+     */
+
+    _this.un;
+    /**
+     * @private
+     * @type {number|string|undefined}
+     */
+
+    _this.id_ = undefined;
+    /**
+     * @type {string}
+     * @private
+     */
+
+    _this.geometryName_ = 'geometry';
+    /**
+     * User provided style.
+     * @private
+     * @type {import("./style/Style.js").StyleLike}
+     */
+
+    _this.style_ = null;
+    /**
+     * @private
+     * @type {import("./style/Style.js").StyleFunction|undefined}
+     */
+
+    _this.styleFunction_ = undefined;
+    /**
+     * @private
+     * @type {?import("./events.js").EventsKey}
+     */
+
+    _this.geometryChangeKey_ = null;
+
+    _this.addChangeListener(_this.geometryName_, _this.handleGeometryChanged_);
+
+    if (opt_geometryOrProperties) {
+      if (typeof
+      /** @type {?} */
+      opt_geometryOrProperties.getSimplifiedGeometry === 'function') {
+        var geometry =
+        /** @type {Geometry} */
+        opt_geometryOrProperties;
+
+        _this.setGeometry(geometry);
+      } else {
+        /** @type {Object<string, *>} */
+        var properties = opt_geometryOrProperties;
+
+        _this.setProperties(properties);
+      }
+    }
+
+    return _this;
+  }
+  /**
+   * Clone this feature. If the original feature has a geometry it
+   * is also cloned. The feature id is not set in the clone.
+   * @return {Feature<Geometry>} The clone.
+   * @api
+   */
+
+
+  Feature.prototype.clone = function () {
+    var clone =
+    /** @type {Feature<Geometry>} */
+    new Feature(this.hasProperties() ? this.getProperties() : null);
+    clone.setGeometryName(this.getGeometryName());
+    var geometry = this.getGeometry();
+
+    if (geometry) {
+      clone.setGeometry(
+      /** @type {Geometry} */
+      geometry.clone());
+    }
+
+    var style = this.getStyle();
+
+    if (style) {
+      clone.setStyle(style);
+    }
+
+    return clone;
+  };
+  /**
+   * Get the feature's default geometry.  A feature may have any number of named
+   * geometries.  The "default" geometry (the one that is rendered by default) is
+   * set when calling {@link module:ol/Feature~Feature#setGeometry}.
+   * @return {Geometry|undefined} The default geometry for the feature.
+   * @api
+   * @observable
+   */
+
+
+  Feature.prototype.getGeometry = function () {
+    return (
+      /** @type {Geometry|undefined} */
+      this.get(this.geometryName_)
+    );
+  };
+  /**
+   * Get the feature identifier.  This is a stable identifier for the feature and
+   * is either set when reading data from a remote source or set explicitly by
+   * calling {@link module:ol/Feature~Feature#setId}.
+   * @return {number|string|undefined} Id.
+   * @api
+   */
+
+
+  Feature.prototype.getId = function () {
+    return this.id_;
+  };
+  /**
+   * Get the name of the feature's default geometry.  By default, the default
+   * geometry is named `geometry`.
+   * @return {string} Get the property name associated with the default geometry
+   *     for this feature.
+   * @api
+   */
+
+
+  Feature.prototype.getGeometryName = function () {
+    return this.geometryName_;
+  };
+  /**
+   * Get the feature's style. Will return what was provided to the
+   * {@link module:ol/Feature~Feature#setStyle} method.
+   * @return {import("./style/Style.js").StyleLike|undefined} The feature style.
+   * @api
+   */
+
+
+  Feature.prototype.getStyle = function () {
+    return this.style_;
+  };
+  /**
+   * Get the feature's style function.
+   * @return {import("./style/Style.js").StyleFunction|undefined} Return a function
+   * representing the current style of this feature.
+   * @api
+   */
+
+
+  Feature.prototype.getStyleFunction = function () {
+    return this.styleFunction_;
+  };
+  /**
+   * @private
+   */
+
+
+  Feature.prototype.handleGeometryChange_ = function () {
+    this.changed();
+  };
+  /**
+   * @private
+   */
+
+
+  Feature.prototype.handleGeometryChanged_ = function () {
+    if (this.geometryChangeKey_) {
+      (0, _events.unlistenByKey)(this.geometryChangeKey_);
+      this.geometryChangeKey_ = null;
+    }
+
+    var geometry = this.getGeometry();
+
+    if (geometry) {
+      this.geometryChangeKey_ = (0, _events.listen)(geometry, _EventType.default.CHANGE, this.handleGeometryChange_, this);
+    }
+
+    this.changed();
+  };
+  /**
+   * Set the default geometry for the feature.  This will update the property
+   * with the name returned by {@link module:ol/Feature~Feature#getGeometryName}.
+   * @param {Geometry|undefined} geometry The new geometry.
+   * @api
+   * @observable
+   */
+
+
+  Feature.prototype.setGeometry = function (geometry) {
+    this.set(this.geometryName_, geometry);
+  };
+  /**
+   * Set the style for the feature to override the layer style.  This can be a
+   * single style object, an array of styles, or a function that takes a
+   * resolution and returns an array of styles. To unset the feature style, call
+   * `setStyle()` without arguments or a falsey value.
+   * @param {import("./style/Style.js").StyleLike} [opt_style] Style for this feature.
+   * @api
+   * @fires module:ol/events/Event~BaseEvent#event:change
+   */
+
+
+  Feature.prototype.setStyle = function (opt_style) {
+    this.style_ = opt_style;
+    this.styleFunction_ = !opt_style ? undefined : createStyleFunction(opt_style);
+    this.changed();
+  };
+  /**
+   * Set the feature id.  The feature id is considered stable and may be used when
+   * requesting features or comparing identifiers returned from a remote source.
+   * The feature id can be used with the
+   * {@link module:ol/source/Vector~VectorSource#getFeatureById} method.
+   * @param {number|string|undefined} id The feature id.
+   * @api
+   * @fires module:ol/events/Event~BaseEvent#event:change
+   */
+
+
+  Feature.prototype.setId = function (id) {
+    this.id_ = id;
+    this.changed();
+  };
+  /**
+   * Set the property name to be used when getting the feature's default geometry.
+   * When calling {@link module:ol/Feature~Feature#getGeometry}, the value of the property with
+   * this name will be returned.
+   * @param {string} name The property name of the default geometry.
+   * @api
+   */
+
+
+  Feature.prototype.setGeometryName = function (name) {
+    this.removeChangeListener(this.geometryName_, this.handleGeometryChanged_);
+    this.geometryName_ = name;
+    this.addChangeListener(this.geometryName_, this.handleGeometryChanged_);
+    this.handleGeometryChanged_();
+  };
+
+  return Feature;
+}(_Object.default);
+/**
+ * Convert the provided object into a feature style function.  Functions passed
+ * through unchanged.  Arrays of Style or single style objects wrapped
+ * in a new feature style function.
+ * @param {!import("./style/Style.js").StyleFunction|!Array<import("./style/Style.js").default>|!import("./style/Style.js").default} obj
+ *     A feature style function, a single style, or an array of styles.
+ * @return {import("./style/Style.js").StyleFunction} A style function.
+ */
+
+
+function createStyleFunction(obj) {
+  if (typeof obj === 'function') {
+    return obj;
+  } else {
+    /**
+     * @type {Array<import("./style/Style.js").default>}
+     */
+    var styles_1;
+
+    if (Array.isArray(obj)) {
+      styles_1 = obj;
+    } else {
+      (0, _asserts.assert)(typeof
+      /** @type {?} */
+      obj.getZIndex === 'function', 41); // Expected an `import("./style/Style.js").Style` or an array of `import("./style/Style.js").Style`
+
+      var style =
+      /** @type {import("./style/Style.js").default} */
+      obj;
+      styles_1 = [style];
+    }
+
+    return function () {
+      return styles_1;
+    };
+  }
+}
+
+var _default = Feature;
+exports.default = _default;
+},{"./Object.js":"../node_modules/ol/Object.js","./events/EventType.js":"../node_modules/ol/events/EventType.js","./asserts.js":"../node_modules/ol/asserts.js","./events.js":"../node_modules/ol/events.js"}],"../node_modules/ol/transform.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.apply = apply;
+exports.compose = compose;
+exports.composeCssTransform = composeCssTransform;
+exports.create = create;
+exports.determinant = determinant;
+exports.invert = invert;
+exports.makeInverse = makeInverse;
+exports.makeScale = makeScale;
+exports.multiply = multiply;
+exports.reset = reset;
+exports.rotate = rotate;
+exports.scale = scale;
+exports.set = set;
+exports.setFromArray = setFromArray;
+exports.toString = toString;
+exports.translate = translate;
+
+var _has = require("./has.js");
+
+var _asserts = require("./asserts.js");
+
+/**
+ * @module ol/transform
+ */
+
+/**
+ * An array representing an affine 2d transformation for use with
+ * {@link module:ol/transform} functions. The array has 6 elements.
+ * @typedef {!Array<number>} Transform
+ * @api
+ */
+
+/**
+ * Collection of affine 2d transformation functions. The functions work on an
+ * array of 6 elements. The element order is compatible with the [SVGMatrix
+ * interface](https://developer.mozilla.org/en-US/docs/Web/API/SVGMatrix) and is
+ * a subset (elements a to f) of a 3×3 matrix:
+ * ```
+ * [ a c e ]
+ * [ b d f ]
+ * [ 0 0 1 ]
+ * ```
+ */
+
+/**
+ * @private
+ * @type {Transform}
+ */
+var tmp_ = new Array(6);
+/**
+ * Create an identity transform.
+ * @return {!Transform} Identity transform.
+ */
+
+function create() {
+  return [1, 0, 0, 1, 0, 0];
+}
+/**
+ * Resets the given transform to an identity transform.
+ * @param {!Transform} transform Transform.
+ * @return {!Transform} Transform.
+ */
+
+
+function reset(transform) {
+  return set(transform, 1, 0, 0, 1, 0, 0);
+}
+/**
+ * Multiply the underlying matrices of two transforms and return the result in
+ * the first transform.
+ * @param {!Transform} transform1 Transform parameters of matrix 1.
+ * @param {!Transform} transform2 Transform parameters of matrix 2.
+ * @return {!Transform} transform1 multiplied with transform2.
+ */
+
+
+function multiply(transform1, transform2) {
+  var a1 = transform1[0];
+  var b1 = transform1[1];
+  var c1 = transform1[2];
+  var d1 = transform1[3];
+  var e1 = transform1[4];
+  var f1 = transform1[5];
+  var a2 = transform2[0];
+  var b2 = transform2[1];
+  var c2 = transform2[2];
+  var d2 = transform2[3];
+  var e2 = transform2[4];
+  var f2 = transform2[5];
+  transform1[0] = a1 * a2 + c1 * b2;
+  transform1[1] = b1 * a2 + d1 * b2;
+  transform1[2] = a1 * c2 + c1 * d2;
+  transform1[3] = b1 * c2 + d1 * d2;
+  transform1[4] = a1 * e2 + c1 * f2 + e1;
+  transform1[5] = b1 * e2 + d1 * f2 + f1;
+  return transform1;
+}
+/**
+ * Set the transform components a-f on a given transform.
+ * @param {!Transform} transform Transform.
+ * @param {number} a The a component of the transform.
+ * @param {number} b The b component of the transform.
+ * @param {number} c The c component of the transform.
+ * @param {number} d The d component of the transform.
+ * @param {number} e The e component of the transform.
+ * @param {number} f The f component of the transform.
+ * @return {!Transform} Matrix with transform applied.
+ */
+
+
+function set(transform, a, b, c, d, e, f) {
+  transform[0] = a;
+  transform[1] = b;
+  transform[2] = c;
+  transform[3] = d;
+  transform[4] = e;
+  transform[5] = f;
+  return transform;
+}
+/**
+ * Set transform on one matrix from another matrix.
+ * @param {!Transform} transform1 Matrix to set transform to.
+ * @param {!Transform} transform2 Matrix to set transform from.
+ * @return {!Transform} transform1 with transform from transform2 applied.
+ */
+
+
+function setFromArray(transform1, transform2) {
+  transform1[0] = transform2[0];
+  transform1[1] = transform2[1];
+  transform1[2] = transform2[2];
+  transform1[3] = transform2[3];
+  transform1[4] = transform2[4];
+  transform1[5] = transform2[5];
+  return transform1;
+}
+/**
+ * Transforms the given coordinate with the given transform returning the
+ * resulting, transformed coordinate. The coordinate will be modified in-place.
+ *
+ * @param {Transform} transform The transformation.
+ * @param {import("./coordinate.js").Coordinate|import("./pixel.js").Pixel} coordinate The coordinate to transform.
+ * @return {import("./coordinate.js").Coordinate|import("./pixel.js").Pixel} return coordinate so that operations can be
+ *     chained together.
+ */
+
+
+function apply(transform, coordinate) {
+  var x = coordinate[0];
+  var y = coordinate[1];
+  coordinate[0] = transform[0] * x + transform[2] * y + transform[4];
+  coordinate[1] = transform[1] * x + transform[3] * y + transform[5];
+  return coordinate;
+}
+/**
+ * Applies rotation to the given transform.
+ * @param {!Transform} transform Transform.
+ * @param {number} angle Angle in radians.
+ * @return {!Transform} The rotated transform.
+ */
+
+
+function rotate(transform, angle) {
+  var cos = Math.cos(angle);
+  var sin = Math.sin(angle);
+  return multiply(transform, set(tmp_, cos, sin, -sin, cos, 0, 0));
+}
+/**
+ * Applies scale to a given transform.
+ * @param {!Transform} transform Transform.
+ * @param {number} x Scale factor x.
+ * @param {number} y Scale factor y.
+ * @return {!Transform} The scaled transform.
+ */
+
+
+function scale(transform, x, y) {
+  return multiply(transform, set(tmp_, x, 0, 0, y, 0, 0));
+}
+/**
+ * Creates a scale transform.
+ * @param {!Transform} target Transform to overwrite.
+ * @param {number} x Scale factor x.
+ * @param {number} y Scale factor y.
+ * @return {!Transform} The scale transform.
+ */
+
+
+function makeScale(target, x, y) {
+  return set(target, x, 0, 0, y, 0, 0);
+}
+/**
+ * Applies translation to the given transform.
+ * @param {!Transform} transform Transform.
+ * @param {number} dx Translation x.
+ * @param {number} dy Translation y.
+ * @return {!Transform} The translated transform.
+ */
+
+
+function translate(transform, dx, dy) {
+  return multiply(transform, set(tmp_, 1, 0, 0, 1, dx, dy));
+}
+/**
+ * Creates a composite transform given an initial translation, scale, rotation, and
+ * final translation (in that order only, not commutative).
+ * @param {!Transform} transform The transform (will be modified in place).
+ * @param {number} dx1 Initial translation x.
+ * @param {number} dy1 Initial translation y.
+ * @param {number} sx Scale factor x.
+ * @param {number} sy Scale factor y.
+ * @param {number} angle Rotation (in counter-clockwise radians).
+ * @param {number} dx2 Final translation x.
+ * @param {number} dy2 Final translation y.
+ * @return {!Transform} The composite transform.
+ */
+
+
+function compose(transform, dx1, dy1, sx, sy, angle, dx2, dy2) {
+  var sin = Math.sin(angle);
+  var cos = Math.cos(angle);
+  transform[0] = sx * cos;
+  transform[1] = sy * sin;
+  transform[2] = -sx * sin;
+  transform[3] = sy * cos;
+  transform[4] = dx2 * sx * cos - dy2 * sx * sin + dx1;
+  transform[5] = dx2 * sy * sin + dy2 * sy * cos + dy1;
+  return transform;
+}
+/**
+ * Creates a composite transform given an initial translation, scale, rotation, and
+ * final translation (in that order only, not commutative). The resulting transform
+ * string can be applied as `transform` property of an HTMLElement's style.
+ * @param {number} dx1 Initial translation x.
+ * @param {number} dy1 Initial translation y.
+ * @param {number} sx Scale factor x.
+ * @param {number} sy Scale factor y.
+ * @param {number} angle Rotation (in counter-clockwise radians).
+ * @param {number} dx2 Final translation x.
+ * @param {number} dy2 Final translation y.
+ * @return {string} The composite css transform.
+ * @api
+ */
+
+
+function composeCssTransform(dx1, dy1, sx, sy, angle, dx2, dy2) {
+  return toString(compose(create(), dx1, dy1, sx, sy, angle, dx2, dy2));
+}
+/**
+ * Invert the given transform.
+ * @param {!Transform} source The source transform to invert.
+ * @return {!Transform} The inverted (source) transform.
+ */
+
+
+function invert(source) {
+  return makeInverse(source, source);
+}
+/**
+ * Invert the given transform.
+ * @param {!Transform} target Transform to be set as the inverse of
+ *     the source transform.
+ * @param {!Transform} source The source transform to invert.
+ * @return {!Transform} The inverted (target) transform.
+ */
+
+
+function makeInverse(target, source) {
+  var det = determinant(source);
+  (0, _asserts.assert)(det !== 0, 32); // Transformation matrix cannot be inverted
+
+  var a = source[0];
+  var b = source[1];
+  var c = source[2];
+  var d = source[3];
+  var e = source[4];
+  var f = source[5];
+  target[0] = d / det;
+  target[1] = -b / det;
+  target[2] = -c / det;
+  target[3] = a / det;
+  target[4] = (c * f - d * e) / det;
+  target[5] = -(a * f - b * e) / det;
+  return target;
+}
+/**
+ * Returns the determinant of the given matrix.
+ * @param {!Transform} mat Matrix.
+ * @return {number} Determinant.
+ */
+
+
+function determinant(mat) {
+  return mat[0] * mat[3] - mat[1] * mat[2];
+}
+/**
+ * @type {HTMLElement}
+ * @private
+ */
+
+
+var transformStringDiv;
+/**
+ * A rounded string version of the transform.  This can be used
+ * for CSS transforms.
+ * @param {!Transform} mat Matrix.
+ * @return {string} The transform as a string.
+ */
+
+function toString(mat) {
+  var transformString = 'matrix(' + mat.join(', ') + ')';
+
+  if (_has.WORKER_OFFSCREEN_CANVAS) {
+    return transformString;
+  }
+
+  var node = transformStringDiv || (transformStringDiv = document.createElement('div'));
+  node.style.transform = transformString;
+  return node.style.transform;
+}
+},{"./has.js":"../node_modules/ol/has.js","./asserts.js":"../node_modules/ol/asserts.js"}],"../node_modules/ol/geom/flat/transform.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.rotate = rotate;
+exports.scale = scale;
+exports.transform2D = transform2D;
+exports.translate = translate;
+
+/**
+ * @module ol/geom/flat/transform
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {import("../../transform.js").Transform} transform Transform.
+ * @param {Array<number>} [opt_dest] Destination.
+ * @return {Array<number>} Transformed coordinates.
+ */
+function transform2D(flatCoordinates, offset, end, stride, transform, opt_dest) {
+  var dest = opt_dest ? opt_dest : [];
+  var i = 0;
+
+  for (var j = offset; j < end; j += stride) {
+    var x = flatCoordinates[j];
+    var y = flatCoordinates[j + 1];
+    dest[i++] = transform[0] * x + transform[2] * y + transform[4];
+    dest[i++] = transform[1] * x + transform[3] * y + transform[5];
+  }
+
+  if (opt_dest && dest.length != i) {
+    dest.length = i;
+  }
+
+  return dest;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} angle Angle.
+ * @param {Array<number>} anchor Rotation anchor point.
+ * @param {Array<number>} [opt_dest] Destination.
+ * @return {Array<number>} Transformed coordinates.
+ */
+
+
+function rotate(flatCoordinates, offset, end, stride, angle, anchor, opt_dest) {
+  var dest = opt_dest ? opt_dest : [];
+  var cos = Math.cos(angle);
+  var sin = Math.sin(angle);
+  var anchorX = anchor[0];
+  var anchorY = anchor[1];
+  var i = 0;
+
+  for (var j = offset; j < end; j += stride) {
+    var deltaX = flatCoordinates[j] - anchorX;
+    var deltaY = flatCoordinates[j + 1] - anchorY;
+    dest[i++] = anchorX + deltaX * cos - deltaY * sin;
+    dest[i++] = anchorY + deltaX * sin + deltaY * cos;
+
+    for (var k = j + 2; k < j + stride; ++k) {
+      dest[i++] = flatCoordinates[k];
+    }
+  }
+
+  if (opt_dest && dest.length != i) {
+    dest.length = i;
+  }
+
+  return dest;
+}
+/**
+ * Scale the coordinates.
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} sx Scale factor in the x-direction.
+ * @param {number} sy Scale factor in the y-direction.
+ * @param {Array<number>} anchor Scale anchor point.
+ * @param {Array<number>} [opt_dest] Destination.
+ * @return {Array<number>} Transformed coordinates.
+ */
+
+
+function scale(flatCoordinates, offset, end, stride, sx, sy, anchor, opt_dest) {
+  var dest = opt_dest ? opt_dest : [];
+  var anchorX = anchor[0];
+  var anchorY = anchor[1];
+  var i = 0;
+
+  for (var j = offset; j < end; j += stride) {
+    var deltaX = flatCoordinates[j] - anchorX;
+    var deltaY = flatCoordinates[j + 1] - anchorY;
+    dest[i++] = anchorX + sx * deltaX;
+    dest[i++] = anchorY + sy * deltaY;
+
+    for (var k = j + 2; k < j + stride; ++k) {
+      dest[i++] = flatCoordinates[k];
+    }
+  }
+
+  if (opt_dest && dest.length != i) {
+    dest.length = i;
+  }
+
+  return dest;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} deltaX Delta X.
+ * @param {number} deltaY Delta Y.
+ * @param {Array<number>} [opt_dest] Destination.
+ * @return {Array<number>} Transformed coordinates.
+ */
+
+
+function translate(flatCoordinates, offset, end, stride, deltaX, deltaY, opt_dest) {
+  var dest = opt_dest ? opt_dest : [];
+  var i = 0;
+
+  for (var j = offset; j < end; j += stride) {
+    dest[i++] = flatCoordinates[j] + deltaX;
+    dest[i++] = flatCoordinates[j + 1] + deltaY;
+
+    for (var k = j + 2; k < j + stride; ++k) {
+      dest[i++] = flatCoordinates[k];
+    }
+  }
+
+  if (opt_dest && dest.length != i) {
+    dest.length = i;
+  }
+
+  return dest;
+}
+},{}],"../node_modules/ol/geom/Geometry.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _Object = _interopRequireDefault(require("../Object.js"));
+
+var _Units = _interopRequireDefault(require("../proj/Units.js"));
+
+var _util = require("../util.js");
+
+var _transform = require("../transform.js");
+
+var _extent = require("../extent.js");
+
+var _proj = require("../proj.js");
+
+var _functions = require("../functions.js");
+
+var _transform2 = require("./flat/transform.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/Geometry
+ */
+
+
+/**
+ * @type {import("../transform.js").Transform}
+ */
+var tmpTransform = (0, _transform.create)();
+/**
+ * @classdesc
+ * Abstract base class; normally only used for creating subclasses and not
+ * instantiated in apps.
+ * Base class for vector geometries.
+ *
+ * To get notified of changes to the geometry, register a listener for the
+ * generic `change` event on your geometry instance.
+ *
+ * @abstract
+ * @api
+ */
+
+var Geometry =
+/** @class */
+function (_super) {
+  __extends(Geometry, _super);
+
+  function Geometry() {
+    var _this = _super.call(this) || this;
+    /**
+     * @private
+     * @type {import("../extent.js").Extent}
+     */
+
+
+    _this.extent_ = (0, _extent.createEmpty)();
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.extentRevision_ = -1;
+    /**
+     * @protected
+     * @type {number}
+     */
+
+    _this.simplifiedGeometryMaxMinSquaredTolerance = 0;
+    /**
+     * @protected
+     * @type {number}
+     */
+
+    _this.simplifiedGeometryRevision = 0;
+    /**
+     * Get a transformed and simplified version of the geometry.
+     * @abstract
+     * @param {number} revision The geometry revision.
+     * @param {number} squaredTolerance Squared tolerance.
+     * @param {import("../proj.js").TransformFunction} [opt_transform] Optional transform function.
+     * @return {Geometry} Simplified geometry.
+     */
+
+    _this.simplifyTransformedInternal = (0, _functions.memoizeOne)(function (revision, squaredTolerance, opt_transform) {
+      if (!opt_transform) {
+        return this.getSimplifiedGeometry(squaredTolerance);
+      }
+
+      var clone = this.clone();
+      clone.applyTransform(opt_transform);
+      return clone.getSimplifiedGeometry(squaredTolerance);
+    });
+    return _this;
+  }
+  /**
+   * Get a transformed and simplified version of the geometry.
+   * @abstract
+   * @param {number} squaredTolerance Squared tolerance.
+   * @param {import("../proj.js").TransformFunction} [opt_transform] Optional transform function.
+   * @return {Geometry} Simplified geometry.
+   */
+
+
+  Geometry.prototype.simplifyTransformed = function (squaredTolerance, opt_transform) {
+    return this.simplifyTransformedInternal(this.getRevision(), squaredTolerance, opt_transform);
+  };
+  /**
+   * Make a complete copy of the geometry.
+   * @abstract
+   * @return {!Geometry} Clone.
+   */
+
+
+  Geometry.prototype.clone = function () {
+    return (0, _util.abstract)();
+  };
+  /**
+   * @abstract
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  Geometry.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @return {boolean} Contains (x, y).
+   */
+
+
+  Geometry.prototype.containsXY = function (x, y) {
+    var coord = this.getClosestPoint([x, y]);
+    return coord[0] === x && coord[1] === y;
+  };
+  /**
+   * Return the closest point of the geometry to the passed point as
+   * {@link module:ol/coordinate~Coordinate coordinate}.
+   * @param {import("../coordinate.js").Coordinate} point Point.
+   * @param {import("../coordinate.js").Coordinate} [opt_closestPoint] Closest point.
+   * @return {import("../coordinate.js").Coordinate} Closest point.
+   * @api
+   */
+
+
+  Geometry.prototype.getClosestPoint = function (point, opt_closestPoint) {
+    var closestPoint = opt_closestPoint ? opt_closestPoint : [NaN, NaN];
+    this.closestPointXY(point[0], point[1], closestPoint, Infinity);
+    return closestPoint;
+  };
+  /**
+   * Returns true if this geometry includes the specified coordinate. If the
+   * coordinate is on the boundary of the geometry, returns false.
+   * @param {import("../coordinate.js").Coordinate} coordinate Coordinate.
+   * @return {boolean} Contains coordinate.
+   * @api
+   */
+
+
+  Geometry.prototype.intersectsCoordinate = function (coordinate) {
+    return this.containsXY(coordinate[0], coordinate[1]);
+  };
+  /**
+   * @abstract
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @protected
+   * @return {import("../extent.js").Extent} extent Extent.
+   */
+
+
+  Geometry.prototype.computeExtent = function (extent) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Get the extent of the geometry.
+   * @param {import("../extent.js").Extent} [opt_extent] Extent.
+   * @return {import("../extent.js").Extent} extent Extent.
+   * @api
+   */
+
+
+  Geometry.prototype.getExtent = function (opt_extent) {
+    if (this.extentRevision_ != this.getRevision()) {
+      var extent = this.computeExtent(this.extent_);
+
+      if (isNaN(extent[0]) || isNaN(extent[1])) {
+        (0, _extent.createOrUpdateEmpty)(extent);
+      }
+
+      this.extentRevision_ = this.getRevision();
+    }
+
+    return (0, _extent.returnOrUpdate)(this.extent_, opt_extent);
+  };
+  /**
+   * Rotate the geometry around a given coordinate. This modifies the geometry
+   * coordinates in place.
+   * @abstract
+   * @param {number} angle Rotation angle in radians.
+   * @param {import("../coordinate.js").Coordinate} anchor The rotation center.
+   * @api
+   */
+
+
+  Geometry.prototype.rotate = function (angle, anchor) {
+    (0, _util.abstract)();
+  };
+  /**
+   * Scale the geometry (with an optional origin).  This modifies the geometry
+   * coordinates in place.
+   * @abstract
+   * @param {number} sx The scaling factor in the x-direction.
+   * @param {number} [opt_sy] The scaling factor in the y-direction (defaults to sx).
+   * @param {import("../coordinate.js").Coordinate} [opt_anchor] The scale origin (defaults to the center
+   *     of the geometry extent).
+   * @api
+   */
+
+
+  Geometry.prototype.scale = function (sx, opt_sy, opt_anchor) {
+    (0, _util.abstract)();
+  };
+  /**
+   * Create a simplified version of this geometry.  For linestrings, this uses
+   * the [Douglas Peucker](https://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm)
+   * algorithm.  For polygons, a quantization-based
+   * simplification is used to preserve topology.
+   * @param {number} tolerance The tolerance distance for simplification.
+   * @return {Geometry} A new, simplified version of the original geometry.
+   * @api
+   */
+
+
+  Geometry.prototype.simplify = function (tolerance) {
+    return this.getSimplifiedGeometry(tolerance * tolerance);
+  };
+  /**
+   * Create a simplified version of this geometry using the Douglas Peucker
+   * algorithm.
+   * See https://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm.
+   * @abstract
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {Geometry} Simplified geometry.
+   */
+
+
+  Geometry.prototype.getSimplifiedGeometry = function (squaredTolerance) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Get the type of this geometry.
+   * @abstract
+   * @return {import("./GeometryType.js").default} Geometry type.
+   */
+
+
+  Geometry.prototype.getType = function () {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Apply a transform function to the coordinates of the geometry.
+   * The geometry is modified in place.
+   * If you do not want the geometry modified in place, first `clone()` it and
+   * then use this function on the clone.
+   * @abstract
+   * @param {import("../proj.js").TransformFunction} transformFn Transform function.
+   * Called with a flat array of geometry coordinates.
+   */
+
+
+  Geometry.prototype.applyTransform = function (transformFn) {
+    (0, _util.abstract)();
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @abstract
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   */
+
+
+  Geometry.prototype.intersectsExtent = function (extent) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Translate the geometry.  This modifies the geometry coordinates in place.  If
+   * instead you want a new geometry, first `clone()` this geometry.
+   * @abstract
+   * @param {number} deltaX Delta X.
+   * @param {number} deltaY Delta Y.
+   * @api
+   */
+
+
+  Geometry.prototype.translate = function (deltaX, deltaY) {
+    (0, _util.abstract)();
+  };
+  /**
+   * Transform each coordinate of the geometry from one coordinate reference
+   * system to another. The geometry is modified in place.
+   * For example, a line will be transformed to a line and a circle to a circle.
+   * If you do not want the geometry modified in place, first `clone()` it and
+   * then use this function on the clone.
+   *
+   * @param {import("../proj.js").ProjectionLike} source The current projection.  Can be a
+   *     string identifier or a {@link module:ol/proj/Projection~Projection} object.
+   * @param {import("../proj.js").ProjectionLike} destination The desired projection.  Can be a
+   *     string identifier or a {@link module:ol/proj/Projection~Projection} object.
+   * @return {Geometry} This geometry.  Note that original geometry is
+   *     modified in place.
+   * @api
+   */
+
+
+  Geometry.prototype.transform = function (source, destination) {
+    /** @type {import("../proj/Projection.js").default} */
+    var sourceProj = (0, _proj.get)(source);
+    var transformFn = sourceProj.getUnits() == _Units.default.TILE_PIXELS ? function (inCoordinates, outCoordinates, stride) {
+      var pixelExtent = sourceProj.getExtent();
+      var projectedExtent = sourceProj.getWorldExtent();
+      var scale = (0, _extent.getHeight)(projectedExtent) / (0, _extent.getHeight)(pixelExtent);
+      (0, _transform.compose)(tmpTransform, projectedExtent[0], projectedExtent[3], scale, -scale, 0, 0, 0);
+      (0, _transform2.transform2D)(inCoordinates, 0, inCoordinates.length, stride, tmpTransform, outCoordinates);
+      return (0, _proj.getTransform)(sourceProj, destination)(inCoordinates, outCoordinates, stride);
+    } : (0, _proj.getTransform)(sourceProj, destination);
+    this.applyTransform(transformFn);
+    return this;
+  };
+
+  return Geometry;
+}(_Object.default);
+
+var _default = Geometry;
+exports.default = _default;
+},{"../Object.js":"../node_modules/ol/Object.js","../proj/Units.js":"../node_modules/ol/proj/Units.js","../util.js":"../node_modules/ol/util.js","../transform.js":"../node_modules/ol/transform.js","../extent.js":"../node_modules/ol/extent.js","../proj.js":"../node_modules/ol/proj.js","../functions.js":"../node_modules/ol/functions.js","./flat/transform.js":"../node_modules/ol/geom/flat/transform.js"}],"../node_modules/ol/geom/GeometryCollection.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _EventType = _interopRequireDefault(require("../events/EventType.js"));
+
+var _Geometry = _interopRequireDefault(require("./Geometry.js"));
+
+var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
+
+var _extent = require("../extent.js");
+
+var _events = require("../events.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/GeometryCollection
+ */
+
+
+/**
+ * @classdesc
+ * An array of {@link module:ol/geom/Geometry} objects.
+ *
+ * @api
+ */
+var GeometryCollection =
+/** @class */
+function (_super) {
+  __extends(GeometryCollection, _super);
+  /**
+   * @param {Array<Geometry>} [opt_geometries] Geometries.
+   */
+
+
+  function GeometryCollection(opt_geometries) {
+    var _this = _super.call(this) || this;
+    /**
+     * @private
+     * @type {Array<Geometry>}
+     */
+
+
+    _this.geometries_ = opt_geometries ? opt_geometries : null;
+    /**
+     * @type {Array<import("../events.js").EventsKey>}
+     */
+
+    _this.changeEventsKeys_ = [];
+
+    _this.listenGeometriesChange_();
+
+    return _this;
+  }
+  /**
+   * @private
+   */
+
+
+  GeometryCollection.prototype.unlistenGeometriesChange_ = function () {
+    this.changeEventsKeys_.forEach(_events.unlistenByKey);
+    this.changeEventsKeys_.length = 0;
+  };
+  /**
+   * @private
+   */
+
+
+  GeometryCollection.prototype.listenGeometriesChange_ = function () {
+    if (!this.geometries_) {
+      return;
+    }
+
+    for (var i = 0, ii = this.geometries_.length; i < ii; ++i) {
+      this.changeEventsKeys_.push((0, _events.listen)(this.geometries_[i], _EventType.default.CHANGE, this.changed, this));
+    }
+  };
+  /**
+   * Make a complete copy of the geometry.
+   * @return {!GeometryCollection} Clone.
+   * @api
+   */
+
+
+  GeometryCollection.prototype.clone = function () {
+    var geometryCollection = new GeometryCollection(null);
+    geometryCollection.setGeometries(this.geometries_);
+    geometryCollection.applyProperties(this);
+    return geometryCollection;
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  GeometryCollection.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
+      return minSquaredDistance;
+    }
+
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      minSquaredDistance = geometries[i].closestPointXY(x, y, closestPoint, minSquaredDistance);
+    }
+
+    return minSquaredDistance;
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @return {boolean} Contains (x, y).
+   */
+
+
+  GeometryCollection.prototype.containsXY = function (x, y) {
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      if (geometries[i].containsXY(x, y)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+  /**
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @protected
+   * @return {import("../extent.js").Extent} extent Extent.
+   */
+
+
+  GeometryCollection.prototype.computeExtent = function (extent) {
+    (0, _extent.createOrUpdateEmpty)(extent);
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      (0, _extent.extend)(extent, geometries[i].getExtent());
+    }
+
+    return extent;
+  };
+  /**
+   * Return the geometries that make up this geometry collection.
+   * @return {Array<Geometry>} Geometries.
+   * @api
+   */
+
+
+  GeometryCollection.prototype.getGeometries = function () {
+    return cloneGeometries(this.geometries_);
+  };
+  /**
+   * @return {Array<Geometry>} Geometries.
+   */
+
+
+  GeometryCollection.prototype.getGeometriesArray = function () {
+    return this.geometries_;
+  };
+  /**
+   * @return {Array<Geometry>} Geometries.
+   */
+
+
+  GeometryCollection.prototype.getGeometriesArrayRecursive = function () {
+    /** @type {Array<Geometry>} */
+    var geometriesArray = [];
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      if (geometries[i].getType() === this.getType()) {
+        geometriesArray = geometriesArray.concat(
+        /** @type {GeometryCollection} */
+        geometries[i].getGeometriesArrayRecursive());
+      } else {
+        geometriesArray.push(geometries[i]);
+      }
+    }
+
+    return geometriesArray;
+  };
+  /**
+   * Create a simplified version of this geometry using the Douglas Peucker algorithm.
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {GeometryCollection} Simplified GeometryCollection.
+   */
+
+
+  GeometryCollection.prototype.getSimplifiedGeometry = function (squaredTolerance) {
+    if (this.simplifiedGeometryRevision !== this.getRevision()) {
+      this.simplifiedGeometryMaxMinSquaredTolerance = 0;
+      this.simplifiedGeometryRevision = this.getRevision();
+    }
+
+    if (squaredTolerance < 0 || this.simplifiedGeometryMaxMinSquaredTolerance !== 0 && squaredTolerance < this.simplifiedGeometryMaxMinSquaredTolerance) {
+      return this;
+    }
+
+    var simplifiedGeometries = [];
+    var geometries = this.geometries_;
+    var simplified = false;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      var geometry = geometries[i];
+      var simplifiedGeometry = geometry.getSimplifiedGeometry(squaredTolerance);
+      simplifiedGeometries.push(simplifiedGeometry);
+
+      if (simplifiedGeometry !== geometry) {
+        simplified = true;
+      }
+    }
+
+    if (simplified) {
+      var simplifiedGeometryCollection = new GeometryCollection(null);
+      simplifiedGeometryCollection.setGeometriesArray(simplifiedGeometries);
+      return simplifiedGeometryCollection;
+    } else {
+      this.simplifiedGeometryMaxMinSquaredTolerance = squaredTolerance;
+      return this;
+    }
+  };
+  /**
+   * Get the type of this geometry.
+   * @return {import("./GeometryType.js").default} Geometry type.
+   * @api
+   */
+
+
+  GeometryCollection.prototype.getType = function () {
+    return _GeometryType.default.GEOMETRY_COLLECTION;
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   * @api
+   */
+
+
+  GeometryCollection.prototype.intersectsExtent = function (extent) {
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      if (geometries[i].intersectsExtent(extent)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+  /**
+   * @return {boolean} Is empty.
+   */
+
+
+  GeometryCollection.prototype.isEmpty = function () {
+    return this.geometries_.length === 0;
+  };
+  /**
+   * Rotate the geometry around a given coordinate. This modifies the geometry
+   * coordinates in place.
+   * @param {number} angle Rotation angle in radians.
+   * @param {import("../coordinate.js").Coordinate} anchor The rotation center.
+   * @api
+   */
+
+
+  GeometryCollection.prototype.rotate = function (angle, anchor) {
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      geometries[i].rotate(angle, anchor);
+    }
+
+    this.changed();
+  };
+  /**
+   * Scale the geometry (with an optional origin).  This modifies the geometry
+   * coordinates in place.
+   * @abstract
+   * @param {number} sx The scaling factor in the x-direction.
+   * @param {number} [opt_sy] The scaling factor in the y-direction (defaults to sx).
+   * @param {import("../coordinate.js").Coordinate} [opt_anchor] The scale origin (defaults to the center
+   *     of the geometry extent).
+   * @api
+   */
+
+
+  GeometryCollection.prototype.scale = function (sx, opt_sy, opt_anchor) {
+    var anchor = opt_anchor;
+
+    if (!anchor) {
+      anchor = (0, _extent.getCenter)(this.getExtent());
+    }
+
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      geometries[i].scale(sx, opt_sy, anchor);
+    }
+
+    this.changed();
+  };
+  /**
+   * Set the geometries that make up this geometry collection.
+   * @param {Array<Geometry>} geometries Geometries.
+   * @api
+   */
+
+
+  GeometryCollection.prototype.setGeometries = function (geometries) {
+    this.setGeometriesArray(cloneGeometries(geometries));
+  };
+  /**
+   * @param {Array<Geometry>} geometries Geometries.
+   */
+
+
+  GeometryCollection.prototype.setGeometriesArray = function (geometries) {
+    this.unlistenGeometriesChange_();
+    this.geometries_ = geometries;
+    this.listenGeometriesChange_();
+    this.changed();
+  };
+  /**
+   * Apply a transform function to the coordinates of the geometry.
+   * The geometry is modified in place.
+   * If you do not want the geometry modified in place, first `clone()` it and
+   * then use this function on the clone.
+   * @param {import("../proj.js").TransformFunction} transformFn Transform function.
+   * Called with a flat array of geometry coordinates.
+   * @api
+   */
+
+
+  GeometryCollection.prototype.applyTransform = function (transformFn) {
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      geometries[i].applyTransform(transformFn);
+    }
+
+    this.changed();
+  };
+  /**
+   * Translate the geometry.  This modifies the geometry coordinates in place.  If
+   * instead you want a new geometry, first `clone()` this geometry.
+   * @param {number} deltaX Delta X.
+   * @param {number} deltaY Delta Y.
+   * @api
+   */
+
+
+  GeometryCollection.prototype.translate = function (deltaX, deltaY) {
+    var geometries = this.geometries_;
+
+    for (var i = 0, ii = geometries.length; i < ii; ++i) {
+      geometries[i].translate(deltaX, deltaY);
+    }
+
+    this.changed();
+  };
+  /**
+   * Clean up.
+   */
+
+
+  GeometryCollection.prototype.disposeInternal = function () {
+    this.unlistenGeometriesChange_();
+
+    _super.prototype.disposeInternal.call(this);
+  };
+
+  return GeometryCollection;
+}(_Geometry.default);
+/**
+ * @param {Array<Geometry>} geometries Geometries.
+ * @return {Array<Geometry>} Cloned geometries.
+ */
+
+
+function cloneGeometries(geometries) {
+  var clonedGeometries = [];
+
+  for (var i = 0, ii = geometries.length; i < ii; ++i) {
+    clonedGeometries.push(geometries[i].clone());
+  }
+
+  return clonedGeometries;
+}
+
+var _default = GeometryCollection;
+exports.default = _default;
+},{"../events/EventType.js":"../node_modules/ol/events/EventType.js","./Geometry.js":"../node_modules/ol/geom/Geometry.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","../extent.js":"../node_modules/ol/extent.js","../events.js":"../node_modules/ol/events.js"}],"../node_modules/ol/format/Feature.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+exports.transformExtentWithOptions = transformExtentWithOptions;
+exports.transformGeometryWithOptions = transformGeometryWithOptions;
+
+var _Units = _interopRequireDefault(require("../proj/Units.js"));
+
+var _util = require("../util.js");
+
+var _obj = require("../obj.js");
+
+var _proj = require("../proj.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * @module ol/format/Feature
+ */
+
+/**
+ * @typedef {Object} ReadOptions
+ * @property {import("../proj.js").ProjectionLike} [dataProjection] Projection of the data we are reading.
+ * If not provided, the projection will be derived from the data (where possible) or
+ * the `dataProjection` of the format is assigned (where set). If the projection
+ * can not be derived from the data and if no `dataProjection` is set for a format,
+ * the features will not be reprojected.
+ * @property {import("../extent.js").Extent} [extent] Tile extent in map units of the tile being read.
+ * This is only required when reading data with tile pixels as geometry units. When configured,
+ * a `dataProjection` with `TILE_PIXELS` as `units` and the tile's pixel extent as `extent` needs to be
+ * provided.
+ * @property {import("../proj.js").ProjectionLike} [featureProjection] Projection of the feature geometries
+ * created by the format reader. If not provided, features will be returned in the
+ * `dataProjection`.
+ */
+
+/**
+ * @typedef {Object} WriteOptions
+ * @property {import("../proj.js").ProjectionLike} [dataProjection] Projection of the data we are writing.
+ * If not provided, the `dataProjection` of the format is assigned (where set).
+ * If no `dataProjection` is set for a format, the features will be returned
+ * in the `featureProjection`.
+ * @property {import("../proj.js").ProjectionLike} [featureProjection] Projection of the feature geometries
+ * that will be serialized by the format writer. If not provided, geometries are assumed
+ * to be in the `dataProjection` if that is set; in other words, they are not transformed.
+ * @property {boolean} [rightHanded] When writing geometries, follow the right-hand
+ * rule for linear ring orientation.  This means that polygons will have counter-clockwise
+ * exterior rings and clockwise interior rings.  By default, coordinates are serialized
+ * as they are provided at construction.  If `true`, the right-hand rule will
+ * be applied.  If `false`, the left-hand rule will be applied (clockwise for
+ * exterior and counter-clockwise for interior rings).  Note that not all
+ * formats support this.  The GeoJSON format does use this property when writing
+ * geometries.
+ * @property {number} [decimals] Maximum number of decimal places for coordinates.
+ * Coordinates are stored internally as floats, but floating-point arithmetic can create
+ * coordinates with a large number of decimal places, not generally wanted on output.
+ * Set a number here to round coordinates. Can also be used to ensure that
+ * coordinates read in can be written back out with the same number of decimals.
+ * Default is no rounding.
+ */
+
+/**
+ * @classdesc
+ * Abstract base class; normally only used for creating subclasses and not
+ * instantiated in apps.
+ * Base class for feature formats.
+ * {@link module:ol/format/Feature~FeatureFormat} subclasses provide the ability to decode and encode
+ * {@link module:ol/Feature~Feature} objects from a variety of commonly used geospatial
+ * file formats.  See the documentation for each format for more details.
+ *
+ * @abstract
+ * @api
+ */
+var FeatureFormat =
+/** @class */
+function () {
+  function FeatureFormat() {
+    /**
+     * @protected
+     * @type {import("../proj/Projection.js").default|undefined}
+     */
+    this.dataProjection = undefined;
+    /**
+     * @protected
+     * @type {import("../proj/Projection.js").default|undefined}
+     */
+
+    this.defaultFeatureProjection = undefined;
+    /**
+     * A list media types supported by the format in descending order of preference.
+     * @type {Array<string>}
+     */
+
+    this.supportedMediaTypes = null;
+  }
+  /**
+   * Adds the data projection to the read options.
+   * @param {Document|Element|Object|string} source Source.
+   * @param {ReadOptions} [opt_options] Options.
+   * @return {ReadOptions|undefined} Options.
+   * @protected
+   */
+
+
+  FeatureFormat.prototype.getReadOptions = function (source, opt_options) {
+    var options;
+
+    if (opt_options) {
+      var dataProjection = opt_options.dataProjection ? (0, _proj.get)(opt_options.dataProjection) : this.readProjection(source);
+
+      if (opt_options.extent && dataProjection && dataProjection.getUnits() === _Units.default.TILE_PIXELS) {
+        dataProjection = (0, _proj.get)(dataProjection);
+        dataProjection.setWorldExtent(opt_options.extent);
+      }
+
+      options = {
+        dataProjection: dataProjection,
+        featureProjection: opt_options.featureProjection
+      };
+    }
+
+    return this.adaptOptions(options);
+  };
+  /**
+   * Sets the `dataProjection` on the options, if no `dataProjection`
+   * is set.
+   * @param {WriteOptions|ReadOptions|undefined} options
+   *     Options.
+   * @protected
+   * @return {WriteOptions|ReadOptions|undefined}
+   *     Updated options.
+   */
+
+
+  FeatureFormat.prototype.adaptOptions = function (options) {
+    return (0, _obj.assign)({
+      dataProjection: this.dataProjection,
+      featureProjection: this.defaultFeatureProjection
+    }, options);
+  };
+  /**
+   * @abstract
+   * @return {import("./FormatType.js").default} Format.
+   */
+
+
+  FeatureFormat.prototype.getType = function () {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Read a single feature from a source.
+   *
+   * @abstract
+   * @param {Document|Element|Object|string} source Source.
+   * @param {ReadOptions} [opt_options] Read options.
+   * @return {import("../Feature.js").FeatureLike} Feature.
+   */
+
+
+  FeatureFormat.prototype.readFeature = function (source, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Read all features from a source.
+   *
+   * @abstract
+   * @param {Document|Element|ArrayBuffer|Object|string} source Source.
+   * @param {ReadOptions} [opt_options] Read options.
+   * @return {Array<import("../Feature.js").FeatureLike>} Features.
+   */
+
+
+  FeatureFormat.prototype.readFeatures = function (source, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Read a single geometry from a source.
+   *
+   * @abstract
+   * @param {Document|Element|Object|string} source Source.
+   * @param {ReadOptions} [opt_options] Read options.
+   * @return {import("../geom/Geometry.js").default} Geometry.
+   */
+
+
+  FeatureFormat.prototype.readGeometry = function (source, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Read the projection from a source.
+   *
+   * @abstract
+   * @param {Document|Element|Object|string} source Source.
+   * @return {import("../proj/Projection.js").default|undefined} Projection.
+   */
+
+
+  FeatureFormat.prototype.readProjection = function (source) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Encode a feature in this format.
+   *
+   * @abstract
+   * @param {import("../Feature.js").default} feature Feature.
+   * @param {WriteOptions} [opt_options] Write options.
+   * @return {string|ArrayBuffer} Result.
+   */
+
+
+  FeatureFormat.prototype.writeFeature = function (feature, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Encode an array of features in this format.
+   *
+   * @abstract
+   * @param {Array<import("../Feature.js").default>} features Features.
+   * @param {WriteOptions} [opt_options] Write options.
+   * @return {string|ArrayBuffer} Result.
+   */
+
+
+  FeatureFormat.prototype.writeFeatures = function (features, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Write a single geometry in this format.
+   *
+   * @abstract
+   * @param {import("../geom/Geometry.js").default} geometry Geometry.
+   * @param {WriteOptions} [opt_options] Write options.
+   * @return {string|ArrayBuffer} Result.
+   */
+
+
+  FeatureFormat.prototype.writeGeometry = function (geometry, opt_options) {
+    return (0, _util.abstract)();
+  };
+
+  return FeatureFormat;
+}();
+
+var _default = FeatureFormat;
+/**
+ * @param {import("../geom/Geometry.js").default} geometry Geometry.
+ * @param {boolean} write Set to true for writing, false for reading.
+ * @param {WriteOptions|ReadOptions} [opt_options] Options.
+ * @return {import("../geom/Geometry.js").default} Transformed geometry.
+ */
+
+exports.default = _default;
+
+function transformGeometryWithOptions(geometry, write, opt_options) {
+  var featureProjection = opt_options ? (0, _proj.get)(opt_options.featureProjection) : null;
+  var dataProjection = opt_options ? (0, _proj.get)(opt_options.dataProjection) : null;
+  var transformed;
+
+  if (featureProjection && dataProjection && !(0, _proj.equivalent)(featureProjection, dataProjection)) {
+    transformed = (write ? geometry.clone() : geometry).transform(write ? featureProjection : dataProjection, write ? dataProjection : featureProjection);
+  } else {
+    transformed = geometry;
+  }
+
+  if (write && opt_options &&
+  /** @type {WriteOptions} */
+  opt_options.decimals !== undefined) {
+    var power_1 = Math.pow(10,
+    /** @type {WriteOptions} */
+    opt_options.decimals); // if decimals option on write, round each coordinate appropriately
+
+    /**
+     * @param {Array<number>} coordinates Coordinates.
+     * @return {Array<number>} Transformed coordinates.
+     */
+
+    var transform = function (coordinates) {
+      for (var i = 0, ii = coordinates.length; i < ii; ++i) {
+        coordinates[i] = Math.round(coordinates[i] * power_1) / power_1;
+      }
+
+      return coordinates;
+    };
+
+    if (transformed === geometry) {
+      transformed = geometry.clone();
+    }
+
+    transformed.applyTransform(transform);
+  }
+
+  return transformed;
+}
+/**
+ * @param {import("../extent.js").Extent} extent Extent.
+ * @param {ReadOptions} [opt_options] Read options.
+ * @return {import("../extent.js").Extent} Transformed extent.
+ */
+
+
+function transformExtentWithOptions(extent, opt_options) {
+  var featureProjection = opt_options ? (0, _proj.get)(opt_options.featureProjection) : null;
+  var dataProjection = opt_options ? (0, _proj.get)(opt_options.dataProjection) : null;
+
+  if (featureProjection && dataProjection && !(0, _proj.equivalent)(featureProjection, dataProjection)) {
+    return (0, _proj.transformExtent)(extent, dataProjection, featureProjection);
+  } else {
+    return extent;
+  }
+}
+},{"../proj/Units.js":"../node_modules/ol/proj/Units.js","../util.js":"../node_modules/ol/util.js","../obj.js":"../node_modules/ol/obj.js","../proj.js":"../node_modules/ol/proj.js"}],"../node_modules/ol/format/FormatType.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+/**
+ * @module ol/format/FormatType
+ */
+
+/**
+ * @enum {string}
+ */
+var _default = {
+  ARRAY_BUFFER: 'arraybuffer',
+  JSON: 'json',
+  TEXT: 'text',
+  XML: 'xml'
+};
+exports.default = _default;
+},{}],"../node_modules/ol/format/JSONFeature.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _Feature = _interopRequireDefault(require("./Feature.js"));
+
+var _FormatType = _interopRequireDefault(require("./FormatType.js"));
+
+var _util = require("../util.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/format/JSONFeature
+ */
+
+
+/**
+ * @classdesc
+ * Abstract base class; normally only used for creating subclasses and not
+ * instantiated in apps.
+ * Base class for JSON feature formats.
+ *
+ * @abstract
+ */
+var JSONFeature =
+/** @class */
+function (_super) {
+  __extends(JSONFeature, _super);
+
+  function JSONFeature() {
+    return _super.call(this) || this;
+  }
+  /**
+   * @return {import("./FormatType.js").default} Format.
+   */
+
+
+  JSONFeature.prototype.getType = function () {
+    return _FormatType.default.JSON;
+  };
+  /**
+   * Read a feature.  Only works for a single feature. Use `readFeatures` to
+   * read a feature collection.
+   *
+   * @param {ArrayBuffer|Document|Element|Object|string} source Source.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @return {import("../Feature.js").default} Feature.
+   * @api
+   */
+
+
+  JSONFeature.prototype.readFeature = function (source, opt_options) {
+    return this.readFeatureFromObject(getObject(source), this.getReadOptions(source, opt_options));
+  };
+  /**
+   * Read all features.  Works with both a single feature and a feature
+   * collection.
+   *
+   * @param {ArrayBuffer|Document|Element|Object|string} source Source.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @return {Array<import("../Feature.js").default>} Features.
+   * @api
+   */
+
+
+  JSONFeature.prototype.readFeatures = function (source, opt_options) {
+    return this.readFeaturesFromObject(getObject(source), this.getReadOptions(source, opt_options));
+  };
+  /**
+   * @abstract
+   * @param {Object} object Object.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @protected
+   * @return {import("../Feature.js").default} Feature.
+   */
+
+
+  JSONFeature.prototype.readFeatureFromObject = function (object, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * @abstract
+   * @param {Object} object Object.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @protected
+   * @return {Array<import("../Feature.js").default>} Features.
+   */
+
+
+  JSONFeature.prototype.readFeaturesFromObject = function (object, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Read a geometry.
+   *
+   * @param {ArrayBuffer|Document|Element|Object|string} source Source.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @return {import("../geom/Geometry.js").default} Geometry.
+   * @api
+   */
+
+
+  JSONFeature.prototype.readGeometry = function (source, opt_options) {
+    return this.readGeometryFromObject(getObject(source), this.getReadOptions(source, opt_options));
+  };
+  /**
+   * @abstract
+   * @param {Object} object Object.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @protected
+   * @return {import("../geom/Geometry.js").default} Geometry.
+   */
+
+
+  JSONFeature.prototype.readGeometryFromObject = function (object, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Read the projection.
+   *
+   * @param {ArrayBuffer|Document|Element|Object|string} source Source.
+   * @return {import("../proj/Projection.js").default} Projection.
+   * @api
+   */
+
+
+  JSONFeature.prototype.readProjection = function (source) {
+    return this.readProjectionFromObject(getObject(source));
+  };
+  /**
+   * @abstract
+   * @param {Object} object Object.
+   * @protected
+   * @return {import("../proj/Projection.js").default} Projection.
+   */
+
+
+  JSONFeature.prototype.readProjectionFromObject = function (object) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Encode a feature as string.
+   *
+   * @param {import("../Feature.js").default} feature Feature.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {string} Encoded feature.
+   * @api
+   */
+
+
+  JSONFeature.prototype.writeFeature = function (feature, opt_options) {
+    return JSON.stringify(this.writeFeatureObject(feature, opt_options));
+  };
+  /**
+   * @abstract
+   * @param {import("../Feature.js").default} feature Feature.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {Object} Object.
+   */
+
+
+  JSONFeature.prototype.writeFeatureObject = function (feature, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Encode an array of features as string.
+   *
+   * @param {Array<import("../Feature.js").default>} features Features.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {string} Encoded features.
+   * @api
+   */
+
+
+  JSONFeature.prototype.writeFeatures = function (features, opt_options) {
+    return JSON.stringify(this.writeFeaturesObject(features, opt_options));
+  };
+  /**
+   * @abstract
+   * @param {Array<import("../Feature.js").default>} features Features.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {Object} Object.
+   */
+
+
+  JSONFeature.prototype.writeFeaturesObject = function (features, opt_options) {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Encode a geometry as string.
+   *
+   * @param {import("../geom/Geometry.js").default} geometry Geometry.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {string} Encoded geometry.
+   * @api
+   */
+
+
+  JSONFeature.prototype.writeGeometry = function (geometry, opt_options) {
+    return JSON.stringify(this.writeGeometryObject(geometry, opt_options));
+  };
+  /**
+   * @abstract
+   * @param {import("../geom/Geometry.js").default} geometry Geometry.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {Object} Object.
+   */
+
+
+  JSONFeature.prototype.writeGeometryObject = function (geometry, opt_options) {
+    return (0, _util.abstract)();
+  };
+
+  return JSONFeature;
+}(_Feature.default);
+/**
+ * @param {Document|Element|Object|string} source Source.
+ * @return {Object} Object.
+ */
+
+
+function getObject(source) {
+  if (typeof source === 'string') {
+    var object = JSON.parse(source);
+    return object ?
+    /** @type {Object} */
+    object : null;
+  } else if (source !== null) {
+    return source;
+  } else {
+    return null;
+  }
+}
+
+var _default = JSONFeature;
+exports.default = _default;
+},{"./Feature.js":"../node_modules/ol/format/Feature.js","./FormatType.js":"../node_modules/ol/format/FormatType.js","../util.js":"../node_modules/ol/util.js"}],"../node_modules/ol/geom/GeometryLayout.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+/**
+ * @module ol/geom/GeometryLayout
+ */
+
+/**
+ * The coordinate layout for geometries, indicating whether a 3rd or 4th z ('Z')
+ * or measure ('M') coordinate is available. Supported values are `'XY'`,
+ * `'XYZ'`, `'XYM'`, `'XYZM'`.
+ * @enum {string}
+ */
+var _default = {
+  XY: 'XY',
+  XYZ: 'XYZ',
+  XYM: 'XYM',
+  XYZM: 'XYZM'
+};
+exports.default = _default;
+},{}],"../node_modules/ol/geom/SimpleGeometry.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+exports.getStrideForLayout = getStrideForLayout;
+exports.transformGeom2D = transformGeom2D;
+
+var _Geometry = _interopRequireDefault(require("./Geometry.js"));
+
+var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
+
+var _util = require("../util.js");
+
+var _extent = require("../extent.js");
+
+var _transform = require("./flat/transform.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/SimpleGeometry
+ */
+
+
+/**
+ * @classdesc
+ * Abstract base class; only used for creating subclasses; do not instantiate
+ * in apps, as cannot be rendered.
+ *
+ * @abstract
+ * @api
+ */
+var SimpleGeometry =
+/** @class */
+function (_super) {
+  __extends(SimpleGeometry, _super);
+
+  function SimpleGeometry() {
+    var _this = _super.call(this) || this;
+    /**
+     * @protected
+     * @type {import("./GeometryLayout.js").default}
+     */
+
+
+    _this.layout = _GeometryLayout.default.XY;
+    /**
+     * @protected
+     * @type {number}
+     */
+
+    _this.stride = 2;
+    /**
+     * @protected
+     * @type {Array<number>}
+     */
+
+    _this.flatCoordinates = null;
+    return _this;
+  }
+  /**
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @protected
+   * @return {import("../extent.js").Extent} extent Extent.
+   */
+
+
+  SimpleGeometry.prototype.computeExtent = function (extent) {
+    return (0, _extent.createOrUpdateFromFlatCoordinates)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, extent);
+  };
+  /**
+   * @abstract
+   * @return {Array<*>} Coordinates.
+   */
+
+
+  SimpleGeometry.prototype.getCoordinates = function () {
+    return (0, _util.abstract)();
+  };
+  /**
+   * Return the first coordinate of the geometry.
+   * @return {import("../coordinate.js").Coordinate} First coordinate.
+   * @api
+   */
+
+
+  SimpleGeometry.prototype.getFirstCoordinate = function () {
+    return this.flatCoordinates.slice(0, this.stride);
+  };
+  /**
+   * @return {Array<number>} Flat coordinates.
+   */
+
+
+  SimpleGeometry.prototype.getFlatCoordinates = function () {
+    return this.flatCoordinates;
+  };
+  /**
+   * Return the last coordinate of the geometry.
+   * @return {import("../coordinate.js").Coordinate} Last point.
+   * @api
+   */
+
+
+  SimpleGeometry.prototype.getLastCoordinate = function () {
+    return this.flatCoordinates.slice(this.flatCoordinates.length - this.stride);
+  };
+  /**
+   * Return the {@link module:ol/geom/GeometryLayout layout} of the geometry.
+   * @return {import("./GeometryLayout.js").default} Layout.
+   * @api
+   */
+
+
+  SimpleGeometry.prototype.getLayout = function () {
+    return this.layout;
+  };
+  /**
+   * Create a simplified version of this geometry using the Douglas Peucker algorithm.
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {SimpleGeometry} Simplified geometry.
+   */
+
+
+  SimpleGeometry.prototype.getSimplifiedGeometry = function (squaredTolerance) {
+    if (this.simplifiedGeometryRevision !== this.getRevision()) {
+      this.simplifiedGeometryMaxMinSquaredTolerance = 0;
+      this.simplifiedGeometryRevision = this.getRevision();
+    } // If squaredTolerance is negative or if we know that simplification will not
+    // have any effect then just return this.
+
+
+    if (squaredTolerance < 0 || this.simplifiedGeometryMaxMinSquaredTolerance !== 0 && squaredTolerance <= this.simplifiedGeometryMaxMinSquaredTolerance) {
+      return this;
+    }
+
+    var simplifiedGeometry = this.getSimplifiedGeometryInternal(squaredTolerance);
+    var simplifiedFlatCoordinates = simplifiedGeometry.getFlatCoordinates();
+
+    if (simplifiedFlatCoordinates.length < this.flatCoordinates.length) {
+      return simplifiedGeometry;
+    } else {
+      // Simplification did not actually remove any coordinates.  We now know
+      // that any calls to getSimplifiedGeometry with a squaredTolerance less
+      // than or equal to the current squaredTolerance will also not have any
+      // effect.  This allows us to short circuit simplification (saving CPU
+      // cycles) and prevents the cache of simplified geometries from filling
+      // up with useless identical copies of this geometry (saving memory).
+      this.simplifiedGeometryMaxMinSquaredTolerance = squaredTolerance;
+      return this;
+    }
+  };
+  /**
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {SimpleGeometry} Simplified geometry.
+   * @protected
+   */
+
+
+  SimpleGeometry.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
+    return this;
+  };
+  /**
+   * @return {number} Stride.
+   */
+
+
+  SimpleGeometry.prototype.getStride = function () {
+    return this.stride;
+  };
+  /**
+   * @param {import("./GeometryLayout.js").default} layout Layout.
+   * @param {Array<number>} flatCoordinates Flat coordinates.
+   */
+
+
+  SimpleGeometry.prototype.setFlatCoordinates = function (layout, flatCoordinates) {
+    this.stride = getStrideForLayout(layout);
+    this.layout = layout;
+    this.flatCoordinates = flatCoordinates;
+  };
+  /**
+   * @abstract
+   * @param {!Array<*>} coordinates Coordinates.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   */
+
+
+  SimpleGeometry.prototype.setCoordinates = function (coordinates, opt_layout) {
+    (0, _util.abstract)();
+  };
+  /**
+   * @param {import("./GeometryLayout.js").default|undefined} layout Layout.
+   * @param {Array<*>} coordinates Coordinates.
+   * @param {number} nesting Nesting.
+   * @protected
+   */
+
+
+  SimpleGeometry.prototype.setLayout = function (layout, coordinates, nesting) {
+    /** @type {number} */
+    var stride;
+
+    if (layout) {
+      stride = getStrideForLayout(layout);
+    } else {
+      for (var i = 0; i < nesting; ++i) {
+        if (coordinates.length === 0) {
+          this.layout = _GeometryLayout.default.XY;
+          this.stride = 2;
+          return;
+        } else {
+          coordinates =
+          /** @type {Array} */
+          coordinates[0];
+        }
+      }
+
+      stride = coordinates.length;
+      layout = getLayoutForStride(stride);
+    }
+
+    this.layout = layout;
+    this.stride = stride;
+  };
+  /**
+   * Apply a transform function to the coordinates of the geometry.
+   * The geometry is modified in place.
+   * If you do not want the geometry modified in place, first `clone()` it and
+   * then use this function on the clone.
+   * @param {import("../proj.js").TransformFunction} transformFn Transform function.
+   * Called with a flat array of geometry coordinates.
+   * @api
+   */
+
+
+  SimpleGeometry.prototype.applyTransform = function (transformFn) {
+    if (this.flatCoordinates) {
+      transformFn(this.flatCoordinates, this.flatCoordinates, this.stride);
+      this.changed();
+    }
+  };
+  /**
+   * Rotate the geometry around a given coordinate. This modifies the geometry
+   * coordinates in place.
+   * @param {number} angle Rotation angle in counter-clockwise radians.
+   * @param {import("../coordinate.js").Coordinate} anchor The rotation center.
+   * @api
+   */
+
+
+  SimpleGeometry.prototype.rotate = function (angle, anchor) {
+    var flatCoordinates = this.getFlatCoordinates();
+
+    if (flatCoordinates) {
+      var stride = this.getStride();
+      (0, _transform.rotate)(flatCoordinates, 0, flatCoordinates.length, stride, angle, anchor, flatCoordinates);
+      this.changed();
+    }
+  };
+  /**
+   * Scale the geometry (with an optional origin).  This modifies the geometry
+   * coordinates in place.
+   * @param {number} sx The scaling factor in the x-direction.
+   * @param {number} [opt_sy] The scaling factor in the y-direction (defaults to sx).
+   * @param {import("../coordinate.js").Coordinate} [opt_anchor] The scale origin (defaults to the center
+   *     of the geometry extent).
+   * @api
+   */
+
+
+  SimpleGeometry.prototype.scale = function (sx, opt_sy, opt_anchor) {
+    var sy = opt_sy;
+
+    if (sy === undefined) {
+      sy = sx;
+    }
+
+    var anchor = opt_anchor;
+
+    if (!anchor) {
+      anchor = (0, _extent.getCenter)(this.getExtent());
+    }
+
+    var flatCoordinates = this.getFlatCoordinates();
+
+    if (flatCoordinates) {
+      var stride = this.getStride();
+      (0, _transform.scale)(flatCoordinates, 0, flatCoordinates.length, stride, sx, sy, anchor, flatCoordinates);
+      this.changed();
+    }
+  };
+  /**
+   * Translate the geometry.  This modifies the geometry coordinates in place.  If
+   * instead you want a new geometry, first `clone()` this geometry.
+   * @param {number} deltaX Delta X.
+   * @param {number} deltaY Delta Y.
+   * @api
+   */
+
+
+  SimpleGeometry.prototype.translate = function (deltaX, deltaY) {
+    var flatCoordinates = this.getFlatCoordinates();
+
+    if (flatCoordinates) {
+      var stride = this.getStride();
+      (0, _transform.translate)(flatCoordinates, 0, flatCoordinates.length, stride, deltaX, deltaY, flatCoordinates);
+      this.changed();
+    }
+  };
+
+  return SimpleGeometry;
+}(_Geometry.default);
+/**
+ * @param {number} stride Stride.
+ * @return {import("./GeometryLayout.js").default} layout Layout.
+ */
+
+
+function getLayoutForStride(stride) {
+  var layout;
+
+  if (stride == 2) {
+    layout = _GeometryLayout.default.XY;
+  } else if (stride == 3) {
+    layout = _GeometryLayout.default.XYZ;
+  } else if (stride == 4) {
+    layout = _GeometryLayout.default.XYZM;
+  }
+
+  return (
+    /** @type {import("./GeometryLayout.js").default} */
+    layout
+  );
+}
+/**
+ * @param {import("./GeometryLayout.js").default} layout Layout.
+ * @return {number} Stride.
+ */
+
+
+function getStrideForLayout(layout) {
+  var stride;
+
+  if (layout == _GeometryLayout.default.XY) {
+    stride = 2;
+  } else if (layout == _GeometryLayout.default.XYZ || layout == _GeometryLayout.default.XYM) {
+    stride = 3;
+  } else if (layout == _GeometryLayout.default.XYZM) {
+    stride = 4;
+  }
+
+  return (
+    /** @type {number} */
+    stride
+  );
+}
+/**
+ * @param {SimpleGeometry} simpleGeometry Simple geometry.
+ * @param {import("../transform.js").Transform} transform Transform.
+ * @param {Array<number>} [opt_dest] Destination.
+ * @return {Array<number>} Transformed flat coordinates.
+ */
+
+
+function transformGeom2D(simpleGeometry, transform, opt_dest) {
+  var flatCoordinates = simpleGeometry.getFlatCoordinates();
+
+  if (!flatCoordinates) {
+    return null;
+  } else {
+    var stride = simpleGeometry.getStride();
+    return (0, _transform.transform2D)(flatCoordinates, 0, flatCoordinates.length, stride, transform, opt_dest);
+  }
+}
+
+var _default = SimpleGeometry;
+exports.default = _default;
+},{"./Geometry.js":"../node_modules/ol/geom/Geometry.js","./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","../util.js":"../node_modules/ol/util.js","../extent.js":"../node_modules/ol/extent.js","./flat/transform.js":"../node_modules/ol/geom/flat/transform.js"}],"../node_modules/ol/geom/flat/closest.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.arrayMaxSquaredDelta = arrayMaxSquaredDelta;
+exports.assignClosestArrayPoint = assignClosestArrayPoint;
+exports.assignClosestMultiArrayPoint = assignClosestMultiArrayPoint;
+exports.assignClosestPoint = assignClosestPoint;
+exports.maxSquaredDelta = maxSquaredDelta;
+exports.multiArrayMaxSquaredDelta = multiArrayMaxSquaredDelta;
+
+var _math = require("../../math.js");
+
+/**
+ * @module ol/geom/flat/closest
+ */
+
+/**
+ * Returns the point on the 2D line segment flatCoordinates[offset1] to
+ * flatCoordinates[offset2] that is closest to the point (x, y).  Extra
+ * dimensions are linearly interpolated.
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset1 Offset 1.
+ * @param {number} offset2 Offset 2.
+ * @param {number} stride Stride.
+ * @param {number} x X.
+ * @param {number} y Y.
+ * @param {Array<number>} closestPoint Closest point.
+ */
+function assignClosest(flatCoordinates, offset1, offset2, stride, x, y, closestPoint) {
+  var x1 = flatCoordinates[offset1];
+  var y1 = flatCoordinates[offset1 + 1];
+  var dx = flatCoordinates[offset2] - x1;
+  var dy = flatCoordinates[offset2 + 1] - y1;
+  var offset;
+
+  if (dx === 0 && dy === 0) {
+    offset = offset1;
+  } else {
+    var t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
+
+    if (t > 1) {
+      offset = offset2;
+    } else if (t > 0) {
+      for (var i = 0; i < stride; ++i) {
+        closestPoint[i] = (0, _math.lerp)(flatCoordinates[offset1 + i], flatCoordinates[offset2 + i], t);
+      }
+
+      closestPoint.length = stride;
+      return;
+    } else {
+      offset = offset1;
+    }
+  }
+
+  for (var i = 0; i < stride; ++i) {
+    closestPoint[i] = flatCoordinates[offset + i];
+  }
+
+  closestPoint.length = stride;
+}
+/**
+ * Return the squared of the largest distance between any pair of consecutive
+ * coordinates.
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} max Max squared delta.
+ * @return {number} Max squared delta.
+ */
+
+
+function maxSquaredDelta(flatCoordinates, offset, end, stride, max) {
+  var x1 = flatCoordinates[offset];
+  var y1 = flatCoordinates[offset + 1];
+
+  for (offset += stride; offset < end; offset += stride) {
+    var x2 = flatCoordinates[offset];
+    var y2 = flatCoordinates[offset + 1];
+    var squaredDelta = (0, _math.squaredDistance)(x1, y1, x2, y2);
+
+    if (squaredDelta > max) {
+      max = squaredDelta;
+    }
+
+    x1 = x2;
+    y1 = y2;
+  }
+
+  return max;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {number} max Max squared delta.
+ * @return {number} Max squared delta.
+ */
+
+
+function arrayMaxSquaredDelta(flatCoordinates, offset, ends, stride, max) {
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    var end = ends[i];
+    max = maxSquaredDelta(flatCoordinates, offset, end, stride, max);
+    offset = end;
+  }
+
+  return max;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @param {number} max Max squared delta.
+ * @return {number} Max squared delta.
+ */
+
+
+function multiArrayMaxSquaredDelta(flatCoordinates, offset, endss, stride, max) {
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+    max = arrayMaxSquaredDelta(flatCoordinates, offset, ends, stride, max);
+    offset = ends[ends.length - 1];
+  }
+
+  return max;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} maxDelta Max delta.
+ * @param {boolean} isRing Is ring.
+ * @param {number} x X.
+ * @param {number} y Y.
+ * @param {Array<number>} closestPoint Closest point.
+ * @param {number} minSquaredDistance Minimum squared distance.
+ * @param {Array<number>} [opt_tmpPoint] Temporary point object.
+ * @return {number} Minimum squared distance.
+ */
+
+
+function assignClosestPoint(flatCoordinates, offset, end, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, opt_tmpPoint) {
+  if (offset == end) {
+    return minSquaredDistance;
+  }
+
+  var i, squaredDistance;
+
+  if (maxDelta === 0) {
+    // All points are identical, so just test the first point.
+    squaredDistance = (0, _math.squaredDistance)(x, y, flatCoordinates[offset], flatCoordinates[offset + 1]);
+
+    if (squaredDistance < minSquaredDistance) {
+      for (i = 0; i < stride; ++i) {
+        closestPoint[i] = flatCoordinates[offset + i];
+      }
+
+      closestPoint.length = stride;
+      return squaredDistance;
+    } else {
+      return minSquaredDistance;
+    }
+  }
+
+  var tmpPoint = opt_tmpPoint ? opt_tmpPoint : [NaN, NaN];
+  var index = offset + stride;
+
+  while (index < end) {
+    assignClosest(flatCoordinates, index - stride, index, stride, x, y, tmpPoint);
+    squaredDistance = (0, _math.squaredDistance)(x, y, tmpPoint[0], tmpPoint[1]);
+
+    if (squaredDistance < minSquaredDistance) {
+      minSquaredDistance = squaredDistance;
+
+      for (i = 0; i < stride; ++i) {
+        closestPoint[i] = tmpPoint[i];
+      }
+
+      closestPoint.length = stride;
+      index += stride;
+    } else {
+      // Skip ahead multiple points, because we know that all the skipped
+      // points cannot be any closer than the closest point we have found so
+      // far.  We know this because we know how close the current point is, how
+      // close the closest point we have found so far is, and the maximum
+      // distance between consecutive points.  For example, if we're currently
+      // at distance 10, the best we've found so far is 3, and that the maximum
+      // distance between consecutive points is 2, then we'll need to skip at
+      // least (10 - 3) / 2 == 3 (rounded down) points to have any chance of
+      // finding a closer point.  We use Math.max(..., 1) to ensure that we
+      // always advance at least one point, to avoid an infinite loop.
+      index += stride * Math.max((Math.sqrt(squaredDistance) - Math.sqrt(minSquaredDistance)) / maxDelta | 0, 1);
+    }
+  }
+
+  if (isRing) {
+    // Check the closing segment.
+    assignClosest(flatCoordinates, end - stride, offset, stride, x, y, tmpPoint);
+    squaredDistance = (0, _math.squaredDistance)(x, y, tmpPoint[0], tmpPoint[1]);
+
+    if (squaredDistance < minSquaredDistance) {
+      minSquaredDistance = squaredDistance;
+
+      for (i = 0; i < stride; ++i) {
+        closestPoint[i] = tmpPoint[i];
+      }
+
+      closestPoint.length = stride;
+    }
+  }
+
+  return minSquaredDistance;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {number} maxDelta Max delta.
+ * @param {boolean} isRing Is ring.
+ * @param {number} x X.
+ * @param {number} y Y.
+ * @param {Array<number>} closestPoint Closest point.
+ * @param {number} minSquaredDistance Minimum squared distance.
+ * @param {Array<number>} [opt_tmpPoint] Temporary point object.
+ * @return {number} Minimum squared distance.
+ */
+
+
+function assignClosestArrayPoint(flatCoordinates, offset, ends, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, opt_tmpPoint) {
+  var tmpPoint = opt_tmpPoint ? opt_tmpPoint : [NaN, NaN];
+
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    var end = ends[i];
+    minSquaredDistance = assignClosestPoint(flatCoordinates, offset, end, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, tmpPoint);
+    offset = end;
+  }
+
+  return minSquaredDistance;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @param {number} maxDelta Max delta.
+ * @param {boolean} isRing Is ring.
+ * @param {number} x X.
+ * @param {number} y Y.
+ * @param {Array<number>} closestPoint Closest point.
+ * @param {number} minSquaredDistance Minimum squared distance.
+ * @param {Array<number>} [opt_tmpPoint] Temporary point object.
+ * @return {number} Minimum squared distance.
+ */
+
+
+function assignClosestMultiArrayPoint(flatCoordinates, offset, endss, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, opt_tmpPoint) {
+  var tmpPoint = opt_tmpPoint ? opt_tmpPoint : [NaN, NaN];
+
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+    minSquaredDistance = assignClosestArrayPoint(flatCoordinates, offset, ends, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, tmpPoint);
+    offset = ends[ends.length - 1];
+  }
+
+  return minSquaredDistance;
+}
+},{"../../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/deflate.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.deflateCoordinate = deflateCoordinate;
+exports.deflateCoordinates = deflateCoordinates;
+exports.deflateCoordinatesArray = deflateCoordinatesArray;
+exports.deflateMultiCoordinatesArray = deflateMultiCoordinatesArray;
+
+/**
+ * @module ol/geom/flat/deflate
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {import("../../coordinate.js").Coordinate} coordinate Coordinate.
+ * @param {number} stride Stride.
+ * @return {number} offset Offset.
+ */
+function deflateCoordinate(flatCoordinates, offset, coordinate, stride) {
+  for (var i = 0, ii = coordinate.length; i < ii; ++i) {
+    flatCoordinates[offset++] = coordinate[i];
+  }
+
+  return offset;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<import("../../coordinate.js").Coordinate>} coordinates Coordinates.
+ * @param {number} stride Stride.
+ * @return {number} offset Offset.
+ */
+
+
+function deflateCoordinates(flatCoordinates, offset, coordinates, stride) {
+  for (var i = 0, ii = coordinates.length; i < ii; ++i) {
+    var coordinate = coordinates[i];
+
+    for (var j = 0; j < stride; ++j) {
+      flatCoordinates[offset++] = coordinate[j];
+    }
+  }
+
+  return offset;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<import("../../coordinate.js").Coordinate>>} coordinatess Coordinatess.
+ * @param {number} stride Stride.
+ * @param {Array<number>} [opt_ends] Ends.
+ * @return {Array<number>} Ends.
+ */
+
+
+function deflateCoordinatesArray(flatCoordinates, offset, coordinatess, stride, opt_ends) {
+  var ends = opt_ends ? opt_ends : [];
+  var i = 0;
+
+  for (var j = 0, jj = coordinatess.length; j < jj; ++j) {
+    var end = deflateCoordinates(flatCoordinates, offset, coordinatess[j], stride);
+    ends[i++] = end;
+    offset = end;
+  }
+
+  ends.length = i;
+  return ends;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<Array<import("../../coordinate.js").Coordinate>>>} coordinatesss Coordinatesss.
+ * @param {number} stride Stride.
+ * @param {Array<Array<number>>} [opt_endss] Endss.
+ * @return {Array<Array<number>>} Endss.
+ */
+
+
+function deflateMultiCoordinatesArray(flatCoordinates, offset, coordinatesss, stride, opt_endss) {
+  var endss = opt_endss ? opt_endss : [];
+  var i = 0;
+
+  for (var j = 0, jj = coordinatesss.length; j < jj; ++j) {
+    var ends = deflateCoordinatesArray(flatCoordinates, offset, coordinatesss[j], stride, endss[i]);
+    endss[i++] = ends;
+    offset = ends[ends.length - 1];
+  }
+
+  endss.length = i;
+  return endss;
+}
+},{}],"../node_modules/ol/geom/flat/simplify.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.douglasPeucker = douglasPeucker;
+exports.douglasPeuckerArray = douglasPeuckerArray;
+exports.douglasPeuckerMultiArray = douglasPeuckerMultiArray;
+exports.quantize = quantize;
+exports.quantizeArray = quantizeArray;
+exports.quantizeMultiArray = quantizeMultiArray;
+exports.radialDistance = radialDistance;
+exports.simplifyLineString = simplifyLineString;
+exports.snap = snap;
+
+var _math = require("../../math.js");
+
+/**
+ * @module ol/geom/flat/simplify
+ */
+// Based on simplify-js https://github.com/mourner/simplify-js
+// Copyright (c) 2012, Vladimir Agafonkin
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+//    1. Redistributions of source code must retain the above copyright notice,
+//       this list of conditions and the following disclaimer.
+//
+//    2. Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} squaredTolerance Squared tolerance.
+ * @param {boolean} highQuality Highest quality.
+ * @param {Array<number>} [opt_simplifiedFlatCoordinates] Simplified flat
+ *     coordinates.
+ * @return {Array<number>} Simplified line string.
+ */
+function simplifyLineString(flatCoordinates, offset, end, stride, squaredTolerance, highQuality, opt_simplifiedFlatCoordinates) {
+  var simplifiedFlatCoordinates = opt_simplifiedFlatCoordinates !== undefined ? opt_simplifiedFlatCoordinates : [];
+
+  if (!highQuality) {
+    end = radialDistance(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, 0);
+    flatCoordinates = simplifiedFlatCoordinates;
+    offset = 0;
+    stride = 2;
+  }
+
+  simplifiedFlatCoordinates.length = douglasPeucker(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, 0);
+  return simplifiedFlatCoordinates;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} squaredTolerance Squared tolerance.
+ * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
+ *     coordinates.
+ * @param {number} simplifiedOffset Simplified offset.
+ * @return {number} Simplified offset.
+ */
+
+
+function douglasPeucker(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset) {
+  var n = (end - offset) / stride;
+
+  if (n < 3) {
+    for (; offset < end; offset += stride) {
+      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset];
+      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset + 1];
+    }
+
+    return simplifiedOffset;
+  }
+  /** @type {Array<number>} */
+
+
+  var markers = new Array(n);
+  markers[0] = 1;
+  markers[n - 1] = 1;
+  /** @type {Array<number>} */
+
+  var stack = [offset, end - stride];
+  var index = 0;
+
+  while (stack.length > 0) {
+    var last = stack.pop();
+    var first = stack.pop();
+    var maxSquaredDistance = 0;
+    var x1 = flatCoordinates[first];
+    var y1 = flatCoordinates[first + 1];
+    var x2 = flatCoordinates[last];
+    var y2 = flatCoordinates[last + 1];
+
+    for (var i = first + stride; i < last; i += stride) {
+      var x = flatCoordinates[i];
+      var y = flatCoordinates[i + 1];
+      var squaredDistance_1 = (0, _math.squaredSegmentDistance)(x, y, x1, y1, x2, y2);
+
+      if (squaredDistance_1 > maxSquaredDistance) {
+        index = i;
+        maxSquaredDistance = squaredDistance_1;
+      }
+    }
+
+    if (maxSquaredDistance > squaredTolerance) {
+      markers[(index - offset) / stride] = 1;
+
+      if (first + stride < index) {
+        stack.push(first, index);
+      }
+
+      if (index + stride < last) {
+        stack.push(index, last);
+      }
+    }
+  }
+
+  for (var i = 0; i < n; ++i) {
+    if (markers[i]) {
+      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset + i * stride];
+      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset + i * stride + 1];
+    }
+  }
+
+  return simplifiedOffset;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {number} squaredTolerance Squared tolerance.
+ * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
+ *     coordinates.
+ * @param {number} simplifiedOffset Simplified offset.
+ * @param {Array<number>} simplifiedEnds Simplified ends.
+ * @return {number} Simplified offset.
+ */
+
+
+function douglasPeuckerArray(flatCoordinates, offset, ends, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEnds) {
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    var end = ends[i];
+    simplifiedOffset = douglasPeucker(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset);
+    simplifiedEnds.push(simplifiedOffset);
+    offset = end;
+  }
+
+  return simplifiedOffset;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @param {number} squaredTolerance Squared tolerance.
+ * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
+ *     coordinates.
+ * @param {number} simplifiedOffset Simplified offset.
+ * @param {Array<Array<number>>} simplifiedEndss Simplified endss.
+ * @return {number} Simplified offset.
+ */
+
+
+function douglasPeuckerMultiArray(flatCoordinates, offset, endss, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEndss) {
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+    var simplifiedEnds = [];
+    simplifiedOffset = douglasPeuckerArray(flatCoordinates, offset, ends, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEnds);
+    simplifiedEndss.push(simplifiedEnds);
+    offset = ends[ends.length - 1];
+  }
+
+  return simplifiedOffset;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} squaredTolerance Squared tolerance.
+ * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
+ *     coordinates.
+ * @param {number} simplifiedOffset Simplified offset.
+ * @return {number} Simplified offset.
+ */
+
+
+function radialDistance(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset) {
+  if (end <= offset + stride) {
+    // zero or one point, no simplification possible, so copy and return
+    for (; offset < end; offset += stride) {
+      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset];
+      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset + 1];
+    }
+
+    return simplifiedOffset;
+  }
+
+  var x1 = flatCoordinates[offset];
+  var y1 = flatCoordinates[offset + 1]; // copy first point
+
+  simplifiedFlatCoordinates[simplifiedOffset++] = x1;
+  simplifiedFlatCoordinates[simplifiedOffset++] = y1;
+  var x2 = x1;
+  var y2 = y1;
+
+  for (offset += stride; offset < end; offset += stride) {
+    x2 = flatCoordinates[offset];
+    y2 = flatCoordinates[offset + 1];
+
+    if ((0, _math.squaredDistance)(x1, y1, x2, y2) > squaredTolerance) {
+      // copy point at offset
+      simplifiedFlatCoordinates[simplifiedOffset++] = x2;
+      simplifiedFlatCoordinates[simplifiedOffset++] = y2;
+      x1 = x2;
+      y1 = y2;
+    }
+  }
+
+  if (x2 != x1 || y2 != y1) {
+    // copy last point
+    simplifiedFlatCoordinates[simplifiedOffset++] = x2;
+    simplifiedFlatCoordinates[simplifiedOffset++] = y2;
+  }
+
+  return simplifiedOffset;
+}
+/**
+ * @param {number} value Value.
+ * @param {number} tolerance Tolerance.
+ * @return {number} Rounded value.
+ */
+
+
+function snap(value, tolerance) {
+  return tolerance * Math.round(value / tolerance);
+}
+/**
+ * Simplifies a line string using an algorithm designed by Tim Schaub.
+ * Coordinates are snapped to the nearest value in a virtual grid and
+ * consecutive duplicate coordinates are discarded.  This effectively preserves
+ * topology as the simplification of any subsection of a line string is
+ * independent of the rest of the line string.  This means that, for examples,
+ * the common edge between two polygons will be simplified to the same line
+ * string independently in both polygons.  This implementation uses a single
+ * pass over the coordinates and eliminates intermediate collinear points.
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} tolerance Tolerance.
+ * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
+ *     coordinates.
+ * @param {number} simplifiedOffset Simplified offset.
+ * @return {number} Simplified offset.
+ */
+
+
+function quantize(flatCoordinates, offset, end, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset) {
+  // do nothing if the line is empty
+  if (offset == end) {
+    return simplifiedOffset;
+  } // snap the first coordinate (P1)
+
+
+  var x1 = snap(flatCoordinates[offset], tolerance);
+  var y1 = snap(flatCoordinates[offset + 1], tolerance);
+  offset += stride; // add the first coordinate to the output
+
+  simplifiedFlatCoordinates[simplifiedOffset++] = x1;
+  simplifiedFlatCoordinates[simplifiedOffset++] = y1; // find the next coordinate that does not snap to the same value as the first
+  // coordinate (P2)
+
+  var x2, y2;
+
+  do {
+    x2 = snap(flatCoordinates[offset], tolerance);
+    y2 = snap(flatCoordinates[offset + 1], tolerance);
+    offset += stride;
+
+    if (offset == end) {
+      // all coordinates snap to the same value, the line collapses to a point
+      // push the last snapped value anyway to ensure that the output contains
+      // at least two points
+      // FIXME should we really return at least two points anyway?
+      simplifiedFlatCoordinates[simplifiedOffset++] = x2;
+      simplifiedFlatCoordinates[simplifiedOffset++] = y2;
+      return simplifiedOffset;
+    }
+  } while (x2 == x1 && y2 == y1);
+
+  while (offset < end) {
+    // snap the next coordinate (P3)
+    var x3 = snap(flatCoordinates[offset], tolerance);
+    var y3 = snap(flatCoordinates[offset + 1], tolerance);
+    offset += stride; // skip P3 if it is equal to P2
+
+    if (x3 == x2 && y3 == y2) {
+      continue;
+    } // calculate the delta between P1 and P2
+
+
+    var dx1 = x2 - x1;
+    var dy1 = y2 - y1; // calculate the delta between P3 and P1
+
+    var dx2 = x3 - x1;
+    var dy2 = y3 - y1; // if P1, P2, and P3 are colinear and P3 is further from P1 than P2 is from
+    // P1 in the same direction then P2 is on the straight line between P1 and
+    // P3
+
+    if (dx1 * dy2 == dy1 * dx2 && (dx1 < 0 && dx2 < dx1 || dx1 == dx2 || dx1 > 0 && dx2 > dx1) && (dy1 < 0 && dy2 < dy1 || dy1 == dy2 || dy1 > 0 && dy2 > dy1)) {
+      // discard P2 and set P2 = P3
+      x2 = x3;
+      y2 = y3;
+      continue;
+    } // either P1, P2, and P3 are not colinear, or they are colinear but P3 is
+    // between P3 and P1 or on the opposite half of the line to P2.  add P2,
+    // and continue with P1 = P2 and P2 = P3
+
+
+    simplifiedFlatCoordinates[simplifiedOffset++] = x2;
+    simplifiedFlatCoordinates[simplifiedOffset++] = y2;
+    x1 = x2;
+    y1 = y2;
+    x2 = x3;
+    y2 = y3;
+  } // add the last point (P2)
+
+
+  simplifiedFlatCoordinates[simplifiedOffset++] = x2;
+  simplifiedFlatCoordinates[simplifiedOffset++] = y2;
+  return simplifiedOffset;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {number} tolerance Tolerance.
+ * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
+ *     coordinates.
+ * @param {number} simplifiedOffset Simplified offset.
+ * @param {Array<number>} simplifiedEnds Simplified ends.
+ * @return {number} Simplified offset.
+ */
+
+
+function quantizeArray(flatCoordinates, offset, ends, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEnds) {
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    var end = ends[i];
+    simplifiedOffset = quantize(flatCoordinates, offset, end, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset);
+    simplifiedEnds.push(simplifiedOffset);
+    offset = end;
+  }
+
+  return simplifiedOffset;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @param {number} tolerance Tolerance.
+ * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
+ *     coordinates.
+ * @param {number} simplifiedOffset Simplified offset.
+ * @param {Array<Array<number>>} simplifiedEndss Simplified endss.
+ * @return {number} Simplified offset.
+ */
+
+
+function quantizeMultiArray(flatCoordinates, offset, endss, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEndss) {
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+    var simplifiedEnds = [];
+    simplifiedOffset = quantizeArray(flatCoordinates, offset, ends, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEnds);
+    simplifiedEndss.push(simplifiedEnds);
+    offset = ends[ends.length - 1];
+  }
+
+  return simplifiedOffset;
+}
+},{"../../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/segments.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.forEach = forEach;
+
+/**
+ * @module ol/geom/flat/segments
+ */
+
+/**
+ * This function calls `callback` for each segment of the flat coordinates
+ * array. If the callback returns a truthy value the function returns that
+ * value immediately. Otherwise the function returns `false`.
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {function(import("../../coordinate.js").Coordinate, import("../../coordinate.js").Coordinate): T} callback Function
+ *     called for each segment.
+ * @return {T|boolean} Value.
+ * @template T
+ */
+function forEach(flatCoordinates, offset, end, stride, callback) {
+  var ret;
+  offset += stride;
+
+  for (; offset < end; offset += stride) {
+    ret = callback(flatCoordinates.slice(offset - stride, offset), flatCoordinates.slice(offset, offset + stride));
+
+    if (ret) {
+      return ret;
+    }
+  }
+
+  return false;
+}
+},{}],"../node_modules/ol/geom/flat/inflate.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.inflateCoordinates = inflateCoordinates;
+exports.inflateCoordinatesArray = inflateCoordinatesArray;
+exports.inflateMultiCoordinatesArray = inflateMultiCoordinatesArray;
+
+/**
+ * @module ol/geom/flat/inflate
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {Array<import("../../coordinate.js").Coordinate>} [opt_coordinates] Coordinates.
+ * @return {Array<import("../../coordinate.js").Coordinate>} Coordinates.
+ */
+function inflateCoordinates(flatCoordinates, offset, end, stride, opt_coordinates) {
+  var coordinates = opt_coordinates !== undefined ? opt_coordinates : [];
+  var i = 0;
+
+  for (var j = offset; j < end; j += stride) {
+    coordinates[i++] = flatCoordinates.slice(j, j + stride);
+  }
+
+  coordinates.length = i;
+  return coordinates;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {Array<Array<import("../../coordinate.js").Coordinate>>} [opt_coordinatess] Coordinatess.
+ * @return {Array<Array<import("../../coordinate.js").Coordinate>>} Coordinatess.
+ */
+
+
+function inflateCoordinatesArray(flatCoordinates, offset, ends, stride, opt_coordinatess) {
+  var coordinatess = opt_coordinatess !== undefined ? opt_coordinatess : [];
+  var i = 0;
+
+  for (var j = 0, jj = ends.length; j < jj; ++j) {
+    var end = ends[j];
+    coordinatess[i++] = inflateCoordinates(flatCoordinates, offset, end, stride, coordinatess[i]);
+    offset = end;
+  }
+
+  coordinatess.length = i;
+  return coordinatess;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @param {Array<Array<Array<import("../../coordinate.js").Coordinate>>>} [opt_coordinatesss]
+ *     Coordinatesss.
+ * @return {Array<Array<Array<import("../../coordinate.js").Coordinate>>>} Coordinatesss.
+ */
+
+
+function inflateMultiCoordinatesArray(flatCoordinates, offset, endss, stride, opt_coordinatesss) {
+  var coordinatesss = opt_coordinatesss !== undefined ? opt_coordinatesss : [];
+  var i = 0;
+
+  for (var j = 0, jj = endss.length; j < jj; ++j) {
+    var ends = endss[j];
+    coordinatesss[i++] = inflateCoordinatesArray(flatCoordinates, offset, ends, stride, coordinatesss[i]);
+    offset = ends[ends.length - 1];
+  }
+
+  coordinatesss.length = i;
+  return coordinatesss;
+}
+},{}],"../node_modules/ol/geom/flat/interpolate.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.interpolatePoint = interpolatePoint;
+exports.lineStringCoordinateAtM = lineStringCoordinateAtM;
+exports.lineStringsCoordinateAtM = lineStringsCoordinateAtM;
+
+var _array = require("../../array.js");
+
+var _math = require("../../math.js");
+
+/**
+ * @module ol/geom/flat/interpolate
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} fraction Fraction.
+ * @param {Array<number>} [opt_dest] Destination.
+ * @param {number} [opt_dimension] Destination dimension (default is `2`)
+ * @return {Array<number>} Destination.
+ */
+function interpolatePoint(flatCoordinates, offset, end, stride, fraction, opt_dest, opt_dimension) {
+  var o, t;
+  var n = (end - offset) / stride;
+
+  if (n === 1) {
+    o = offset;
+  } else if (n === 2) {
+    o = offset;
+    t = fraction;
+  } else if (n !== 0) {
+    var x1 = flatCoordinates[offset];
+    var y1 = flatCoordinates[offset + 1];
+    var length_1 = 0;
+    var cumulativeLengths = [0];
+
+    for (var i = offset + stride; i < end; i += stride) {
+      var x2 = flatCoordinates[i];
+      var y2 = flatCoordinates[i + 1];
+      length_1 += Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+      cumulativeLengths.push(length_1);
+      x1 = x2;
+      y1 = y2;
+    }
+
+    var target = fraction * length_1;
+    var index = (0, _array.binarySearch)(cumulativeLengths, target);
+
+    if (index < 0) {
+      t = (target - cumulativeLengths[-index - 2]) / (cumulativeLengths[-index - 1] - cumulativeLengths[-index - 2]);
+      o = offset + (-index - 2) * stride;
+    } else {
+      o = offset + index * stride;
+    }
+  }
+
+  var dimension = opt_dimension > 1 ? opt_dimension : 2;
+  var dest = opt_dest ? opt_dest : new Array(dimension);
+
+  for (var i = 0; i < dimension; ++i) {
+    dest[i] = o === undefined ? NaN : t === undefined ? flatCoordinates[o + i] : (0, _math.lerp)(flatCoordinates[o + i], flatCoordinates[o + stride + i], t);
+  }
+
+  return dest;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} m M.
+ * @param {boolean} extrapolate Extrapolate.
+ * @return {import("../../coordinate.js").Coordinate} Coordinate.
+ */
+
+
+function lineStringCoordinateAtM(flatCoordinates, offset, end, stride, m, extrapolate) {
+  if (end == offset) {
+    return null;
+  }
+
+  var coordinate;
+
+  if (m < flatCoordinates[offset + stride - 1]) {
+    if (extrapolate) {
+      coordinate = flatCoordinates.slice(offset, offset + stride);
+      coordinate[stride - 1] = m;
+      return coordinate;
+    } else {
+      return null;
+    }
+  } else if (flatCoordinates[end - 1] < m) {
+    if (extrapolate) {
+      coordinate = flatCoordinates.slice(end - stride, end);
+      coordinate[stride - 1] = m;
+      return coordinate;
+    } else {
+      return null;
+    }
+  } // FIXME use O(1) search
+
+
+  if (m == flatCoordinates[offset + stride - 1]) {
+    return flatCoordinates.slice(offset, offset + stride);
+  }
+
+  var lo = offset / stride;
+  var hi = end / stride;
+
+  while (lo < hi) {
+    var mid = lo + hi >> 1;
+
+    if (m < flatCoordinates[(mid + 1) * stride - 1]) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+
+  var m0 = flatCoordinates[lo * stride - 1];
+
+  if (m == m0) {
+    return flatCoordinates.slice((lo - 1) * stride, (lo - 1) * stride + stride);
+  }
+
+  var m1 = flatCoordinates[(lo + 1) * stride - 1];
+  var t = (m - m0) / (m1 - m0);
+  coordinate = [];
+
+  for (var i = 0; i < stride - 1; ++i) {
+    coordinate.push((0, _math.lerp)(flatCoordinates[(lo - 1) * stride + i], flatCoordinates[lo * stride + i], t));
+  }
+
+  coordinate.push(m);
+  return coordinate;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {number} m M.
+ * @param {boolean} extrapolate Extrapolate.
+ * @param {boolean} interpolate Interpolate.
+ * @return {import("../../coordinate.js").Coordinate} Coordinate.
+ */
+
+
+function lineStringsCoordinateAtM(flatCoordinates, offset, ends, stride, m, extrapolate, interpolate) {
+  if (interpolate) {
+    return lineStringCoordinateAtM(flatCoordinates, offset, ends[ends.length - 1], stride, m, extrapolate);
+  }
+
+  var coordinate;
+
+  if (m < flatCoordinates[stride - 1]) {
+    if (extrapolate) {
+      coordinate = flatCoordinates.slice(0, stride);
+      coordinate[stride - 1] = m;
+      return coordinate;
+    } else {
+      return null;
+    }
+  }
+
+  if (flatCoordinates[flatCoordinates.length - 1] < m) {
+    if (extrapolate) {
+      coordinate = flatCoordinates.slice(flatCoordinates.length - stride);
+      coordinate[stride - 1] = m;
+      return coordinate;
+    } else {
+      return null;
+    }
+  }
+
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    var end = ends[i];
+
+    if (offset == end) {
+      continue;
+    }
+
+    if (m < flatCoordinates[offset + stride - 1]) {
+      return null;
+    } else if (m <= flatCoordinates[end - 1]) {
+      return lineStringCoordinateAtM(flatCoordinates, offset, end, stride, m, false);
+    }
+
+    offset = end;
+  }
+
+  return null;
+}
+},{"../../array.js":"../node_modules/ol/array.js","../../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/contains.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.linearRingContainsExtent = linearRingContainsExtent;
+exports.linearRingContainsXY = linearRingContainsXY;
+exports.linearRingsContainsXY = linearRingsContainsXY;
+exports.linearRingssContainsXY = linearRingssContainsXY;
+
+var _extent = require("../../extent.js");
+
+/**
+ * @module ol/geom/flat/contains
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {import("../../extent.js").Extent} extent Extent.
+ * @return {boolean} Contains extent.
+ */
+function linearRingContainsExtent(flatCoordinates, offset, end, stride, extent) {
+  var outside = (0, _extent.forEachCorner)(extent,
+  /**
+   * @param {import("../../coordinate.js").Coordinate} coordinate Coordinate.
+   * @return {boolean} Contains (x, y).
+   */
+  function (coordinate) {
+    return !linearRingContainsXY(flatCoordinates, offset, end, stride, coordinate[0], coordinate[1]);
+  });
+  return !outside;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {number} x X.
+ * @param {number} y Y.
+ * @return {boolean} Contains (x, y).
+ */
+
+
+function linearRingContainsXY(flatCoordinates, offset, end, stride, x, y) {
+  // https://geomalgorithms.com/a03-_inclusion.html
+  // Copyright 2000 softSurfer, 2012 Dan Sunday
+  // This code may be freely used and modified for any purpose
+  // providing that this copyright notice is included with it.
+  // SoftSurfer makes no warranty for this code, and cannot be held
+  // liable for any real or imagined damage resulting from its use.
+  // Users of this code must verify correctness for their application.
+  var wn = 0;
+  var x1 = flatCoordinates[end - stride];
+  var y1 = flatCoordinates[end - stride + 1];
+
+  for (; offset < end; offset += stride) {
+    var x2 = flatCoordinates[offset];
+    var y2 = flatCoordinates[offset + 1];
+
+    if (y1 <= y) {
+      if (y2 > y && (x2 - x1) * (y - y1) - (x - x1) * (y2 - y1) > 0) {
+        wn++;
+      }
+    } else if (y2 <= y && (x2 - x1) * (y - y1) - (x - x1) * (y2 - y1) < 0) {
+      wn--;
+    }
+
+    x1 = x2;
+    y1 = y2;
+  }
+
+  return wn !== 0;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {number} x X.
+ * @param {number} y Y.
+ * @return {boolean} Contains (x, y).
+ */
+
+
+function linearRingsContainsXY(flatCoordinates, offset, ends, stride, x, y) {
+  if (ends.length === 0) {
+    return false;
+  }
+
+  if (!linearRingContainsXY(flatCoordinates, offset, ends[0], stride, x, y)) {
+    return false;
+  }
+
+  for (var i = 1, ii = ends.length; i < ii; ++i) {
+    if (linearRingContainsXY(flatCoordinates, ends[i - 1], ends[i], stride, x, y)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @param {number} x X.
+ * @param {number} y Y.
+ * @return {boolean} Contains (x, y).
+ */
+
+
+function linearRingssContainsXY(flatCoordinates, offset, endss, stride, x, y) {
+  if (endss.length === 0) {
+    return false;
+  }
+
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+
+    if (linearRingsContainsXY(flatCoordinates, offset, ends, stride, x, y)) {
+      return true;
+    }
+
+    offset = ends[ends.length - 1];
+  }
+
+  return false;
+}
+},{"../../extent.js":"../node_modules/ol/extent.js"}],"../node_modules/ol/geom/flat/intersectsextent.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.intersectsLineString = intersectsLineString;
+exports.intersectsLineStringArray = intersectsLineStringArray;
+exports.intersectsLinearRing = intersectsLinearRing;
+exports.intersectsLinearRingArray = intersectsLinearRingArray;
+exports.intersectsLinearRingMultiArray = intersectsLinearRingMultiArray;
+
+var _extent = require("../../extent.js");
+
+var _segments = require("./segments.js");
+
+var _contains = require("./contains.js");
+
+/**
+ * @module ol/geom/flat/intersectsextent
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {import("../../extent.js").Extent} extent Extent.
+ * @return {boolean} True if the geometry and the extent intersect.
+ */
+function intersectsLineString(flatCoordinates, offset, end, stride, extent) {
+  var coordinatesExtent = (0, _extent.extendFlatCoordinates)((0, _extent.createEmpty)(), flatCoordinates, offset, end, stride);
+
+  if (!(0, _extent.intersects)(extent, coordinatesExtent)) {
+    return false;
+  }
+
+  if ((0, _extent.containsExtent)(extent, coordinatesExtent)) {
+    return true;
+  }
+
+  if (coordinatesExtent[0] >= extent[0] && coordinatesExtent[2] <= extent[2]) {
+    return true;
+  }
+
+  if (coordinatesExtent[1] >= extent[1] && coordinatesExtent[3] <= extent[3]) {
+    return true;
+  }
+
+  return (0, _segments.forEach)(flatCoordinates, offset, end, stride,
+  /**
+   * @param {import("../../coordinate.js").Coordinate} point1 Start point.
+   * @param {import("../../coordinate.js").Coordinate} point2 End point.
+   * @return {boolean} `true` if the segment and the extent intersect,
+   *     `false` otherwise.
+   */
+  function (point1, point2) {
+    return (0, _extent.intersectsSegment)(extent, point1, point2);
+  });
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {import("../../extent.js").Extent} extent Extent.
+ * @return {boolean} True if the geometry and the extent intersect.
+ */
+
+
+function intersectsLineStringArray(flatCoordinates, offset, ends, stride, extent) {
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    if (intersectsLineString(flatCoordinates, offset, ends[i], stride, extent)) {
+      return true;
+    }
+
+    offset = ends[i];
+  }
+
+  return false;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @param {import("../../extent.js").Extent} extent Extent.
+ * @return {boolean} True if the geometry and the extent intersect.
+ */
+
+
+function intersectsLinearRing(flatCoordinates, offset, end, stride, extent) {
+  if (intersectsLineString(flatCoordinates, offset, end, stride, extent)) {
+    return true;
+  }
+
+  if ((0, _contains.linearRingContainsXY)(flatCoordinates, offset, end, stride, extent[0], extent[1])) {
+    return true;
+  }
+
+  if ((0, _contains.linearRingContainsXY)(flatCoordinates, offset, end, stride, extent[0], extent[3])) {
+    return true;
+  }
+
+  if ((0, _contains.linearRingContainsXY)(flatCoordinates, offset, end, stride, extent[2], extent[1])) {
+    return true;
+  }
+
+  if ((0, _contains.linearRingContainsXY)(flatCoordinates, offset, end, stride, extent[2], extent[3])) {
+    return true;
+  }
+
+  return false;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {import("../../extent.js").Extent} extent Extent.
+ * @return {boolean} True if the geometry and the extent intersect.
+ */
+
+
+function intersectsLinearRingArray(flatCoordinates, offset, ends, stride, extent) {
+  if (!intersectsLinearRing(flatCoordinates, offset, ends[0], stride, extent)) {
+    return false;
+  }
+
+  if (ends.length === 1) {
+    return true;
+  }
+
+  for (var i = 1, ii = ends.length; i < ii; ++i) {
+    if ((0, _contains.linearRingContainsExtent)(flatCoordinates, ends[i - 1], ends[i], stride, extent)) {
+      if (!intersectsLineString(flatCoordinates, ends[i - 1], ends[i], stride, extent)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @param {import("../../extent.js").Extent} extent Extent.
+ * @return {boolean} True if the geometry and the extent intersect.
+ */
+
+
+function intersectsLinearRingMultiArray(flatCoordinates, offset, endss, stride, extent) {
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+
+    if (intersectsLinearRingArray(flatCoordinates, offset, ends, stride, extent)) {
+      return true;
+    }
+
+    offset = ends[ends.length - 1];
+  }
+
+  return false;
+}
+},{"../../extent.js":"../node_modules/ol/extent.js","./segments.js":"../node_modules/ol/geom/flat/segments.js","./contains.js":"../node_modules/ol/geom/flat/contains.js"}],"../node_modules/ol/geom/flat/length.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.lineStringLength = lineStringLength;
+exports.linearRingLength = linearRingLength;
+
+/**
+ * @module ol/geom/flat/length
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @return {number} Length.
+ */
+function lineStringLength(flatCoordinates, offset, end, stride) {
+  var x1 = flatCoordinates[offset];
+  var y1 = flatCoordinates[offset + 1];
+  var length = 0;
+
+  for (var i = offset + stride; i < end; i += stride) {
+    var x2 = flatCoordinates[i];
+    var y2 = flatCoordinates[i + 1];
+    length += Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+    x1 = x2;
+    y1 = y2;
+  }
+
+  return length;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @return {number} Perimeter.
+ */
+
+
+function linearRingLength(flatCoordinates, offset, end, stride) {
+  var perimeter = lineStringLength(flatCoordinates, offset, end, stride);
+  var dx = flatCoordinates[end - stride] - flatCoordinates[offset];
+  var dy = flatCoordinates[end - stride + 1] - flatCoordinates[offset + 1];
+  perimeter += Math.sqrt(dx * dx + dy * dy);
+  return perimeter;
+}
+},{}],"../node_modules/ol/geom/LineString.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
+
+var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
+
+var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
+
+var _closest = require("./flat/closest.js");
+
+var _extent = require("../extent.js");
+
+var _deflate = require("./flat/deflate.js");
+
+var _simplify = require("./flat/simplify.js");
+
+var _array = require("../array.js");
+
+var _segments = require("./flat/segments.js");
+
+var _inflate = require("./flat/inflate.js");
+
+var _interpolate = require("./flat/interpolate.js");
+
+var _intersectsextent = require("./flat/intersectsextent.js");
+
+var _length = require("./flat/length.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/LineString
+ */
+
+
+/**
+ * @classdesc
+ * Linestring geometry.
+ *
+ * @api
+ */
+var LineString =
+/** @class */
+function (_super) {
+  __extends(LineString, _super);
+  /**
+   * @param {Array<import("../coordinate.js").Coordinate>|Array<number>} coordinates Coordinates.
+   *     For internal use, flat coordinates in combination with `opt_layout` are also accepted.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   */
+
+
+  function LineString(coordinates, opt_layout) {
+    var _this = _super.call(this) || this;
+    /**
+     * @private
+     * @type {import("../coordinate.js").Coordinate}
+     */
+
+
+    _this.flatMidpoint_ = null;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.flatMidpointRevision_ = -1;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDelta_ = -1;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDeltaRevision_ = -1;
+
+    if (opt_layout !== undefined && !Array.isArray(coordinates[0])) {
+      _this.setFlatCoordinates(opt_layout,
+      /** @type {Array<number>} */
+      coordinates);
+    } else {
+      _this.setCoordinates(
+      /** @type {Array<import("../coordinate.js").Coordinate>} */
+      coordinates, opt_layout);
+    }
+
+    return _this;
+  }
+  /**
+   * Append the passed coordinate to the coordinates of the linestring.
+   * @param {import("../coordinate.js").Coordinate} coordinate Coordinate.
+   * @api
+   */
+
+
+  LineString.prototype.appendCoordinate = function (coordinate) {
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = coordinate.slice();
+    } else {
+      (0, _array.extend)(this.flatCoordinates, coordinate);
+    }
+
+    this.changed();
+  };
+  /**
+   * Make a complete copy of the geometry.
+   * @return {!LineString} Clone.
+   * @api
+   */
+
+
+  LineString.prototype.clone = function () {
+    var lineString = new LineString(this.flatCoordinates.slice(), this.layout);
+    lineString.applyProperties(this);
+    return lineString;
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  LineString.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
+      return minSquaredDistance;
+    }
+
+    if (this.maxDeltaRevision_ != this.getRevision()) {
+      this.maxDelta_ = Math.sqrt((0, _closest.maxSquaredDelta)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, 0));
+      this.maxDeltaRevision_ = this.getRevision();
+    }
+
+    return (0, _closest.assignClosestPoint)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, this.maxDelta_, false, x, y, closestPoint, minSquaredDistance);
+  };
+  /**
+   * Iterate over each segment, calling the provided callback.
+   * If the callback returns a truthy value the function returns that
+   * value immediately. Otherwise the function returns `false`.
+   *
+   * @param {function(this: S, import("../coordinate.js").Coordinate, import("../coordinate.js").Coordinate): T} callback Function
+   *     called for each segment. The function will receive two arguments, the start and end coordinates of the segment.
+   * @return {T|boolean} Value.
+   * @template T,S
+   * @api
+   */
+
+
+  LineString.prototype.forEachSegment = function (callback) {
+    return (0, _segments.forEach)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, callback);
+  };
+  /**
+   * Returns the coordinate at `m` using linear interpolation, or `null` if no
+   * such coordinate exists.
+   *
+   * `opt_extrapolate` controls extrapolation beyond the range of Ms in the
+   * MultiLineString. If `opt_extrapolate` is `true` then Ms less than the first
+   * M will return the first coordinate and Ms greater than the last M will
+   * return the last coordinate.
+   *
+   * @param {number} m M.
+   * @param {boolean} [opt_extrapolate] Extrapolate. Default is `false`.
+   * @return {import("../coordinate.js").Coordinate} Coordinate.
+   * @api
+   */
+
+
+  LineString.prototype.getCoordinateAtM = function (m, opt_extrapolate) {
+    if (this.layout != _GeometryLayout.default.XYM && this.layout != _GeometryLayout.default.XYZM) {
+      return null;
+    }
+
+    var extrapolate = opt_extrapolate !== undefined ? opt_extrapolate : false;
+    return (0, _interpolate.lineStringCoordinateAtM)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, m, extrapolate);
+  };
+  /**
+   * Return the coordinates of the linestring.
+   * @return {Array<import("../coordinate.js").Coordinate>} Coordinates.
+   * @api
+   */
+
+
+  LineString.prototype.getCoordinates = function () {
+    return (0, _inflate.inflateCoordinates)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
+  };
+  /**
+   * Return the coordinate at the provided fraction along the linestring.
+   * The `fraction` is a number between 0 and 1, where 0 is the start of the
+   * linestring and 1 is the end.
+   * @param {number} fraction Fraction.
+   * @param {import("../coordinate.js").Coordinate} [opt_dest] Optional coordinate whose values will
+   *     be modified. If not provided, a new coordinate will be returned.
+   * @return {import("../coordinate.js").Coordinate} Coordinate of the interpolated point.
+   * @api
+   */
+
+
+  LineString.prototype.getCoordinateAt = function (fraction, opt_dest) {
+    return (0, _interpolate.interpolatePoint)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, fraction, opt_dest, this.stride);
+  };
+  /**
+   * Return the length of the linestring on projected plane.
+   * @return {number} Length (on projected plane).
+   * @api
+   */
+
+
+  LineString.prototype.getLength = function () {
+    return (0, _length.lineStringLength)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
+  };
+  /**
+   * @return {Array<number>} Flat midpoint.
+   */
+
+
+  LineString.prototype.getFlatMidpoint = function () {
+    if (this.flatMidpointRevision_ != this.getRevision()) {
+      this.flatMidpoint_ = this.getCoordinateAt(0.5, this.flatMidpoint_);
+      this.flatMidpointRevision_ = this.getRevision();
+    }
+
+    return this.flatMidpoint_;
+  };
+  /**
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {LineString} Simplified LineString.
+   * @protected
+   */
+
+
+  LineString.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
+    var simplifiedFlatCoordinates = [];
+    simplifiedFlatCoordinates.length = (0, _simplify.douglasPeucker)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, squaredTolerance, simplifiedFlatCoordinates, 0);
+    return new LineString(simplifiedFlatCoordinates, _GeometryLayout.default.XY);
+  };
+  /**
+   * Get the type of this geometry.
+   * @return {import("./GeometryType.js").default} Geometry type.
+   * @api
+   */
+
+
+  LineString.prototype.getType = function () {
+    return _GeometryType.default.LINE_STRING;
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   * @api
+   */
+
+
+  LineString.prototype.intersectsExtent = function (extent) {
+    return (0, _intersectsextent.intersectsLineString)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, extent);
+  };
+  /**
+   * Set the coordinates of the linestring.
+   * @param {!Array<import("../coordinate.js").Coordinate>} coordinates Coordinates.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @api
+   */
+
+
+  LineString.prototype.setCoordinates = function (coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 1);
+
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = [];
+    }
+
+    this.flatCoordinates.length = (0, _deflate.deflateCoordinates)(this.flatCoordinates, 0, coordinates, this.stride);
+    this.changed();
+  };
+
+  return LineString;
+}(_SimpleGeometry.default);
+
+var _default = LineString;
+exports.default = _default;
+},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js","../array.js":"../node_modules/ol/array.js","./flat/segments.js":"../node_modules/ol/geom/flat/segments.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/interpolate.js":"../node_modules/ol/geom/flat/interpolate.js","./flat/intersectsextent.js":"../node_modules/ol/geom/flat/intersectsextent.js","./flat/length.js":"../node_modules/ol/geom/flat/length.js"}],"../node_modules/ol/geom/MultiLineString.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
+
+var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
+
+var _LineString = _interopRequireDefault(require("./LineString.js"));
+
+var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
+
+var _closest = require("./flat/closest.js");
+
+var _extent = require("../extent.js");
+
+var _deflate = require("./flat/deflate.js");
+
+var _simplify = require("./flat/simplify.js");
+
+var _array = require("../array.js");
+
+var _inflate = require("./flat/inflate.js");
+
+var _interpolate = require("./flat/interpolate.js");
+
+var _intersectsextent = require("./flat/intersectsextent.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/MultiLineString
+ */
+
+
+/**
+ * @classdesc
+ * Multi-linestring geometry.
+ *
+ * @api
+ */
+var MultiLineString =
+/** @class */
+function (_super) {
+  __extends(MultiLineString, _super);
+  /**
+   * @param {Array<Array<import("../coordinate.js").Coordinate>|LineString>|Array<number>} coordinates
+   *     Coordinates or LineString geometries. (For internal use, flat coordinates in
+   *     combination with `opt_layout` and `opt_ends` are also accepted.)
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @param {Array<number>} [opt_ends] Flat coordinate ends for internal use.
+   */
+
+
+  function MultiLineString(coordinates, opt_layout, opt_ends) {
+    var _this = _super.call(this) || this;
+    /**
+     * @type {Array<number>}
+     * @private
+     */
+
+
+    _this.ends_ = [];
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDelta_ = -1;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDeltaRevision_ = -1;
+
+    if (Array.isArray(coordinates[0])) {
+      _this.setCoordinates(
+      /** @type {Array<Array<import("../coordinate.js").Coordinate>>} */
+      coordinates, opt_layout);
+    } else if (opt_layout !== undefined && opt_ends) {
+      _this.setFlatCoordinates(opt_layout,
+      /** @type {Array<number>} */
+      coordinates);
+
+      _this.ends_ = opt_ends;
+    } else {
+      var layout = _this.getLayout();
+
+      var lineStrings =
+      /** @type {Array<LineString>} */
+      coordinates;
+      var flatCoordinates = [];
+      var ends = [];
+
+      for (var i = 0, ii = lineStrings.length; i < ii; ++i) {
+        var lineString = lineStrings[i];
+
+        if (i === 0) {
+          layout = lineString.getLayout();
+        }
+
+        (0, _array.extend)(flatCoordinates, lineString.getFlatCoordinates());
+        ends.push(flatCoordinates.length);
+      }
+
+      _this.setFlatCoordinates(layout, flatCoordinates);
+
+      _this.ends_ = ends;
+    }
+
+    return _this;
+  }
+  /**
+   * Append the passed linestring to the multilinestring.
+   * @param {LineString} lineString LineString.
+   * @api
+   */
+
+
+  MultiLineString.prototype.appendLineString = function (lineString) {
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = lineString.getFlatCoordinates().slice();
+    } else {
+      (0, _array.extend)(this.flatCoordinates, lineString.getFlatCoordinates().slice());
+    }
+
+    this.ends_.push(this.flatCoordinates.length);
+    this.changed();
+  };
+  /**
+   * Make a complete copy of the geometry.
+   * @return {!MultiLineString} Clone.
+   * @api
+   */
+
+
+  MultiLineString.prototype.clone = function () {
+    var multiLineString = new MultiLineString(this.flatCoordinates.slice(), this.layout, this.ends_.slice());
+    multiLineString.applyProperties(this);
+    return multiLineString;
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  MultiLineString.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
+      return minSquaredDistance;
+    }
+
+    if (this.maxDeltaRevision_ != this.getRevision()) {
+      this.maxDelta_ = Math.sqrt((0, _closest.arrayMaxSquaredDelta)(this.flatCoordinates, 0, this.ends_, this.stride, 0));
+      this.maxDeltaRevision_ = this.getRevision();
+    }
+
+    return (0, _closest.assignClosestArrayPoint)(this.flatCoordinates, 0, this.ends_, this.stride, this.maxDelta_, false, x, y, closestPoint, minSquaredDistance);
+  };
+  /**
+   * Returns the coordinate at `m` using linear interpolation, or `null` if no
+   * such coordinate exists.
+   *
+   * `opt_extrapolate` controls extrapolation beyond the range of Ms in the
+   * MultiLineString. If `opt_extrapolate` is `true` then Ms less than the first
+   * M will return the first coordinate and Ms greater than the last M will
+   * return the last coordinate.
+   *
+   * `opt_interpolate` controls interpolation between consecutive LineStrings
+   * within the MultiLineString. If `opt_interpolate` is `true` the coordinates
+   * will be linearly interpolated between the last coordinate of one LineString
+   * and the first coordinate of the next LineString.  If `opt_interpolate` is
+   * `false` then the function will return `null` for Ms falling between
+   * LineStrings.
+   *
+   * @param {number} m M.
+   * @param {boolean} [opt_extrapolate] Extrapolate. Default is `false`.
+   * @param {boolean} [opt_interpolate] Interpolate. Default is `false`.
+   * @return {import("../coordinate.js").Coordinate} Coordinate.
+   * @api
+   */
+
+
+  MultiLineString.prototype.getCoordinateAtM = function (m, opt_extrapolate, opt_interpolate) {
+    if (this.layout != _GeometryLayout.default.XYM && this.layout != _GeometryLayout.default.XYZM || this.flatCoordinates.length === 0) {
+      return null;
+    }
+
+    var extrapolate = opt_extrapolate !== undefined ? opt_extrapolate : false;
+    var interpolate = opt_interpolate !== undefined ? opt_interpolate : false;
+    return (0, _interpolate.lineStringsCoordinateAtM)(this.flatCoordinates, 0, this.ends_, this.stride, m, extrapolate, interpolate);
+  };
+  /**
+   * Return the coordinates of the multilinestring.
+   * @return {Array<Array<import("../coordinate.js").Coordinate>>} Coordinates.
+   * @api
+   */
+
+
+  MultiLineString.prototype.getCoordinates = function () {
+    return (0, _inflate.inflateCoordinatesArray)(this.flatCoordinates, 0, this.ends_, this.stride);
+  };
+  /**
+   * @return {Array<number>} Ends.
+   */
+
+
+  MultiLineString.prototype.getEnds = function () {
+    return this.ends_;
+  };
+  /**
+   * Return the linestring at the specified index.
+   * @param {number} index Index.
+   * @return {LineString} LineString.
+   * @api
+   */
+
+
+  MultiLineString.prototype.getLineString = function (index) {
+    if (index < 0 || this.ends_.length <= index) {
+      return null;
+    }
+
+    return new _LineString.default(this.flatCoordinates.slice(index === 0 ? 0 : this.ends_[index - 1], this.ends_[index]), this.layout);
+  };
+  /**
+   * Return the linestrings of this multilinestring.
+   * @return {Array<LineString>} LineStrings.
+   * @api
+   */
+
+
+  MultiLineString.prototype.getLineStrings = function () {
+    var flatCoordinates = this.flatCoordinates;
+    var ends = this.ends_;
+    var layout = this.layout;
+    /** @type {Array<LineString>} */
+
+    var lineStrings = [];
+    var offset = 0;
+
+    for (var i = 0, ii = ends.length; i < ii; ++i) {
+      var end = ends[i];
+      var lineString = new _LineString.default(flatCoordinates.slice(offset, end), layout);
+      lineStrings.push(lineString);
+      offset = end;
+    }
+
+    return lineStrings;
+  };
+  /**
+   * @return {Array<number>} Flat midpoints.
+   */
+
+
+  MultiLineString.prototype.getFlatMidpoints = function () {
+    var midpoints = [];
+    var flatCoordinates = this.flatCoordinates;
+    var offset = 0;
+    var ends = this.ends_;
+    var stride = this.stride;
+
+    for (var i = 0, ii = ends.length; i < ii; ++i) {
+      var end = ends[i];
+      var midpoint = (0, _interpolate.interpolatePoint)(flatCoordinates, offset, end, stride, 0.5);
+      (0, _array.extend)(midpoints, midpoint);
+      offset = end;
+    }
+
+    return midpoints;
+  };
+  /**
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {MultiLineString} Simplified MultiLineString.
+   * @protected
+   */
+
+
+  MultiLineString.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
+    var simplifiedFlatCoordinates = [];
+    var simplifiedEnds = [];
+    simplifiedFlatCoordinates.length = (0, _simplify.douglasPeuckerArray)(this.flatCoordinates, 0, this.ends_, this.stride, squaredTolerance, simplifiedFlatCoordinates, 0, simplifiedEnds);
+    return new MultiLineString(simplifiedFlatCoordinates, _GeometryLayout.default.XY, simplifiedEnds);
+  };
+  /**
+   * Get the type of this geometry.
+   * @return {import("./GeometryType.js").default} Geometry type.
+   * @api
+   */
+
+
+  MultiLineString.prototype.getType = function () {
+    return _GeometryType.default.MULTI_LINE_STRING;
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   * @api
+   */
+
+
+  MultiLineString.prototype.intersectsExtent = function (extent) {
+    return (0, _intersectsextent.intersectsLineStringArray)(this.flatCoordinates, 0, this.ends_, this.stride, extent);
+  };
+  /**
+   * Set the coordinates of the multilinestring.
+   * @param {!Array<Array<import("../coordinate.js").Coordinate>>} coordinates Coordinates.
+   * @param {GeometryLayout} [opt_layout] Layout.
+   * @api
+   */
+
+
+  MultiLineString.prototype.setCoordinates = function (coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 2);
+
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = [];
+    }
+
+    var ends = (0, _deflate.deflateCoordinatesArray)(this.flatCoordinates, 0, coordinates, this.stride, this.ends_);
+    this.flatCoordinates.length = ends.length === 0 ? 0 : ends[ends.length - 1];
+    this.changed();
+  };
+
+  return MultiLineString;
+}(_SimpleGeometry.default);
+
+var _default = MultiLineString;
+exports.default = _default;
+},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./LineString.js":"../node_modules/ol/geom/LineString.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js","../array.js":"../node_modules/ol/array.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/interpolate.js":"../node_modules/ol/geom/flat/interpolate.js","./flat/intersectsextent.js":"../node_modules/ol/geom/flat/intersectsextent.js"}],"../node_modules/ol/geom/Point.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
+
+var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
+
+var _extent = require("../extent.js");
+
+var _deflate = require("./flat/deflate.js");
+
+var _math = require("../math.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/Point
+ */
+
+
+/**
+ * @classdesc
+ * Point geometry.
+ *
+ * @api
+ */
+var Point =
+/** @class */
+function (_super) {
+  __extends(Point, _super);
+  /**
+   * @param {import("../coordinate.js").Coordinate} coordinates Coordinates.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   */
+
+
+  function Point(coordinates, opt_layout) {
+    var _this = _super.call(this) || this;
+
+    _this.setCoordinates(coordinates, opt_layout);
+
+    return _this;
+  }
+  /**
+   * Make a complete copy of the geometry.
+   * @return {!Point} Clone.
+   * @api
+   */
+
+
+  Point.prototype.clone = function () {
+    var point = new Point(this.flatCoordinates.slice(), this.layout);
+    point.applyProperties(this);
+    return point;
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  Point.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    var flatCoordinates = this.flatCoordinates;
+    var squaredDistance = (0, _math.squaredDistance)(x, y, flatCoordinates[0], flatCoordinates[1]);
+
+    if (squaredDistance < minSquaredDistance) {
+      var stride = this.stride;
+
+      for (var i = 0; i < stride; ++i) {
+        closestPoint[i] = flatCoordinates[i];
+      }
+
+      closestPoint.length = stride;
+      return squaredDistance;
+    } else {
+      return minSquaredDistance;
+    }
+  };
+  /**
+   * Return the coordinate of the point.
+   * @return {import("../coordinate.js").Coordinate} Coordinates.
+   * @api
+   */
+
+
+  Point.prototype.getCoordinates = function () {
+    return !this.flatCoordinates ? [] : this.flatCoordinates.slice();
+  };
+  /**
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @protected
+   * @return {import("../extent.js").Extent} extent Extent.
+   */
+
+
+  Point.prototype.computeExtent = function (extent) {
+    return (0, _extent.createOrUpdateFromCoordinate)(this.flatCoordinates, extent);
+  };
+  /**
+   * Get the type of this geometry.
+   * @return {import("./GeometryType.js").default} Geometry type.
+   * @api
+   */
+
+
+  Point.prototype.getType = function () {
+    return _GeometryType.default.POINT;
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   * @api
+   */
+
+
+  Point.prototype.intersectsExtent = function (extent) {
+    return (0, _extent.containsXY)(extent, this.flatCoordinates[0], this.flatCoordinates[1]);
+  };
+  /**
+   * @param {!Array<*>} coordinates Coordinates.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @api
+   */
+
+
+  Point.prototype.setCoordinates = function (coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 0);
+
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = [];
+    }
+
+    this.flatCoordinates.length = (0, _deflate.deflateCoordinate)(this.flatCoordinates, 0, coordinates, this.stride);
+    this.changed();
+  };
+
+  return Point;
+}(_SimpleGeometry.default);
+
+var _default = Point;
+exports.default = _default;
+},{"./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/MultiPoint.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
+
+var _Point = _interopRequireDefault(require("./Point.js"));
+
+var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
+
+var _extent = require("../extent.js");
+
+var _deflate = require("./flat/deflate.js");
+
+var _array = require("../array.js");
+
+var _inflate = require("./flat/inflate.js");
+
+var _math = require("../math.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/MultiPoint
+ */
+
+
+/**
+ * @classdesc
+ * Multi-point geometry.
+ *
+ * @api
+ */
+var MultiPoint =
+/** @class */
+function (_super) {
+  __extends(MultiPoint, _super);
+  /**
+   * @param {Array<import("../coordinate.js").Coordinate>|Array<number>} coordinates Coordinates.
+   *     For internal use, flat coordinates in combination with `opt_layout` are also accepted.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   */
+
+
+  function MultiPoint(coordinates, opt_layout) {
+    var _this = _super.call(this) || this;
+
+    if (opt_layout && !Array.isArray(coordinates[0])) {
+      _this.setFlatCoordinates(opt_layout,
+      /** @type {Array<number>} */
+      coordinates);
+    } else {
+      _this.setCoordinates(
+      /** @type {Array<import("../coordinate.js").Coordinate>} */
+      coordinates, opt_layout);
+    }
+
+    return _this;
+  }
+  /**
+   * Append the passed point to this multipoint.
+   * @param {Point} point Point.
+   * @api
+   */
+
+
+  MultiPoint.prototype.appendPoint = function (point) {
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = point.getFlatCoordinates().slice();
+    } else {
+      (0, _array.extend)(this.flatCoordinates, point.getFlatCoordinates());
+    }
+
+    this.changed();
+  };
+  /**
+   * Make a complete copy of the geometry.
+   * @return {!MultiPoint} Clone.
+   * @api
+   */
+
+
+  MultiPoint.prototype.clone = function () {
+    var multiPoint = new MultiPoint(this.flatCoordinates.slice(), this.layout);
+    multiPoint.applyProperties(this);
+    return multiPoint;
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  MultiPoint.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
+      return minSquaredDistance;
+    }
+
+    var flatCoordinates = this.flatCoordinates;
+    var stride = this.stride;
+
+    for (var i = 0, ii = flatCoordinates.length; i < ii; i += stride) {
+      var squaredDistance = (0, _math.squaredDistance)(x, y, flatCoordinates[i], flatCoordinates[i + 1]);
+
+      if (squaredDistance < minSquaredDistance) {
+        minSquaredDistance = squaredDistance;
+
+        for (var j = 0; j < stride; ++j) {
+          closestPoint[j] = flatCoordinates[i + j];
+        }
+
+        closestPoint.length = stride;
+      }
+    }
+
+    return minSquaredDistance;
+  };
+  /**
+   * Return the coordinates of the multipoint.
+   * @return {Array<import("../coordinate.js").Coordinate>} Coordinates.
+   * @api
+   */
+
+
+  MultiPoint.prototype.getCoordinates = function () {
+    return (0, _inflate.inflateCoordinates)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
+  };
+  /**
+   * Return the point at the specified index.
+   * @param {number} index Index.
+   * @return {Point} Point.
+   * @api
+   */
+
+
+  MultiPoint.prototype.getPoint = function (index) {
+    var n = !this.flatCoordinates ? 0 : this.flatCoordinates.length / this.stride;
+
+    if (index < 0 || n <= index) {
+      return null;
+    }
+
+    return new _Point.default(this.flatCoordinates.slice(index * this.stride, (index + 1) * this.stride), this.layout);
+  };
+  /**
+   * Return the points of this multipoint.
+   * @return {Array<Point>} Points.
+   * @api
+   */
+
+
+  MultiPoint.prototype.getPoints = function () {
+    var flatCoordinates = this.flatCoordinates;
+    var layout = this.layout;
+    var stride = this.stride;
+    /** @type {Array<Point>} */
+
+    var points = [];
+
+    for (var i = 0, ii = flatCoordinates.length; i < ii; i += stride) {
+      var point = new _Point.default(flatCoordinates.slice(i, i + stride), layout);
+      points.push(point);
+    }
+
+    return points;
+  };
+  /**
+   * Get the type of this geometry.
+   * @return {import("./GeometryType.js").default} Geometry type.
+   * @api
+   */
+
+
+  MultiPoint.prototype.getType = function () {
+    return _GeometryType.default.MULTI_POINT;
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   * @api
+   */
+
+
+  MultiPoint.prototype.intersectsExtent = function (extent) {
+    var flatCoordinates = this.flatCoordinates;
+    var stride = this.stride;
+
+    for (var i = 0, ii = flatCoordinates.length; i < ii; i += stride) {
+      var x = flatCoordinates[i];
+      var y = flatCoordinates[i + 1];
+
+      if ((0, _extent.containsXY)(extent, x, y)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+  /**
+   * Set the coordinates of the multipoint.
+   * @param {!Array<import("../coordinate.js").Coordinate>} coordinates Coordinates.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @api
+   */
+
+
+  MultiPoint.prototype.setCoordinates = function (coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 1);
+
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = [];
+    }
+
+    this.flatCoordinates.length = (0, _deflate.deflateCoordinates)(this.flatCoordinates, 0, coordinates, this.stride);
+    this.changed();
+  };
+
+  return MultiPoint;
+}(_SimpleGeometry.default);
+
+var _default = MultiPoint;
+exports.default = _default;
+},{"./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./Point.js":"../node_modules/ol/geom/Point.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","../array.js":"../node_modules/ol/array.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/area.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.linearRing = linearRing;
+exports.linearRings = linearRings;
+exports.linearRingss = linearRingss;
+
+/**
+ * @module ol/geom/flat/area
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @return {number} Area.
+ */
+function linearRing(flatCoordinates, offset, end, stride) {
+  var twiceArea = 0;
+  var x1 = flatCoordinates[end - stride];
+  var y1 = flatCoordinates[end - stride + 1];
+
+  for (; offset < end; offset += stride) {
+    var x2 = flatCoordinates[offset];
+    var y2 = flatCoordinates[offset + 1];
+    twiceArea += y1 * x2 - x1 * y2;
+    x1 = x2;
+    y1 = y2;
+  }
+
+  return twiceArea / 2;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @return {number} Area.
+ */
+
+
+function linearRings(flatCoordinates, offset, ends, stride) {
+  var area = 0;
+
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    var end = ends[i];
+    area += linearRing(flatCoordinates, offset, end, stride);
+    offset = end;
+  }
+
+  return area;
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @return {number} Area.
+ */
+
+
+function linearRingss(flatCoordinates, offset, endss, stride) {
+  var area = 0;
+
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+    area += linearRings(flatCoordinates, offset, ends, stride);
+    offset = ends[ends.length - 1];
+  }
+
+  return area;
+}
+},{}],"../node_modules/ol/geom/LinearRing.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
+
+var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
+
+var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
+
+var _closest = require("./flat/closest.js");
+
+var _extent = require("../extent.js");
+
+var _deflate = require("./flat/deflate.js");
+
+var _simplify = require("./flat/simplify.js");
+
+var _inflate = require("./flat/inflate.js");
+
+var _area = require("./flat/area.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/LinearRing
+ */
+
+
+/**
+ * @classdesc
+ * Linear ring geometry. Only used as part of polygon; cannot be rendered
+ * on its own.
+ *
+ * @api
+ */
+var LinearRing =
+/** @class */
+function (_super) {
+  __extends(LinearRing, _super);
+  /**
+   * @param {Array<import("../coordinate.js").Coordinate>|Array<number>} coordinates Coordinates.
+   *     For internal use, flat coordinates in combination with `opt_layout` are also accepted.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   */
+
+
+  function LinearRing(coordinates, opt_layout) {
+    var _this = _super.call(this) || this;
+    /**
+     * @private
+     * @type {number}
+     */
+
+
+    _this.maxDelta_ = -1;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDeltaRevision_ = -1;
+
+    if (opt_layout !== undefined && !Array.isArray(coordinates[0])) {
+      _this.setFlatCoordinates(opt_layout,
+      /** @type {Array<number>} */
+      coordinates);
+    } else {
+      _this.setCoordinates(
+      /** @type {Array<import("../coordinate.js").Coordinate>} */
+      coordinates, opt_layout);
+    }
+
+    return _this;
+  }
+  /**
+   * Make a complete copy of the geometry.
+   * @return {!LinearRing} Clone.
+   * @api
+   */
+
+
+  LinearRing.prototype.clone = function () {
+    return new LinearRing(this.flatCoordinates.slice(), this.layout);
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  LinearRing.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
+      return minSquaredDistance;
+    }
+
+    if (this.maxDeltaRevision_ != this.getRevision()) {
+      this.maxDelta_ = Math.sqrt((0, _closest.maxSquaredDelta)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, 0));
+      this.maxDeltaRevision_ = this.getRevision();
+    }
+
+    return (0, _closest.assignClosestPoint)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, this.maxDelta_, true, x, y, closestPoint, minSquaredDistance);
+  };
+  /**
+   * Return the area of the linear ring on projected plane.
+   * @return {number} Area (on projected plane).
+   * @api
+   */
+
+
+  LinearRing.prototype.getArea = function () {
+    return (0, _area.linearRing)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
+  };
+  /**
+   * Return the coordinates of the linear ring.
+   * @return {Array<import("../coordinate.js").Coordinate>} Coordinates.
+   * @api
+   */
+
+
+  LinearRing.prototype.getCoordinates = function () {
+    return (0, _inflate.inflateCoordinates)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
+  };
+  /**
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {LinearRing} Simplified LinearRing.
+   * @protected
+   */
+
+
+  LinearRing.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
+    var simplifiedFlatCoordinates = [];
+    simplifiedFlatCoordinates.length = (0, _simplify.douglasPeucker)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, squaredTolerance, simplifiedFlatCoordinates, 0);
+    return new LinearRing(simplifiedFlatCoordinates, _GeometryLayout.default.XY);
+  };
+  /**
+   * Get the type of this geometry.
+   * @return {import("./GeometryType.js").default} Geometry type.
+   * @api
+   */
+
+
+  LinearRing.prototype.getType = function () {
+    return _GeometryType.default.LINEAR_RING;
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   * @api
+   */
+
+
+  LinearRing.prototype.intersectsExtent = function (extent) {
+    return false;
+  };
+  /**
+   * Set the coordinates of the linear ring.
+   * @param {!Array<import("../coordinate.js").Coordinate>} coordinates Coordinates.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @api
+   */
+
+
+  LinearRing.prototype.setCoordinates = function (coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 1);
+
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = [];
+    }
+
+    this.flatCoordinates.length = (0, _deflate.deflateCoordinates)(this.flatCoordinates, 0, coordinates, this.stride);
+    this.changed();
+  };
+
+  return LinearRing;
+}(_SimpleGeometry.default);
+
+var _default = LinearRing;
+exports.default = _default;
+},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/area.js":"../node_modules/ol/geom/flat/area.js"}],"../node_modules/ol/geom/flat/interiorpoint.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.getInteriorPointOfArray = getInteriorPointOfArray;
+exports.getInteriorPointsOfMultiArray = getInteriorPointsOfMultiArray;
+
+var _contains = require("./contains.js");
+
+var _array = require("../../array.js");
+
+/**
+ * @module ol/geom/flat/interiorpoint
+ */
+
+/**
+ * Calculates a point that is likely to lie in the interior of the linear rings.
+ * Inspired by JTS's com.vividsolutions.jts.geom.Geometry#getInteriorPoint.
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {Array<number>} flatCenters Flat centers.
+ * @param {number} flatCentersOffset Flat center offset.
+ * @param {Array<number>} [opt_dest] Destination.
+ * @return {Array<number>} Destination point as XYM coordinate, where M is the
+ * length of the horizontal intersection that the point belongs to.
+ */
+function getInteriorPointOfArray(flatCoordinates, offset, ends, stride, flatCenters, flatCentersOffset, opt_dest) {
+  var i, ii, x, x1, x2, y1, y2;
+  var y = flatCenters[flatCentersOffset + 1];
+  /** @type {Array<number>} */
+
+  var intersections = []; // Calculate intersections with the horizontal line
+
+  for (var r = 0, rr = ends.length; r < rr; ++r) {
+    var end = ends[r];
+    x1 = flatCoordinates[end - stride];
+    y1 = flatCoordinates[end - stride + 1];
+
+    for (i = offset; i < end; i += stride) {
+      x2 = flatCoordinates[i];
+      y2 = flatCoordinates[i + 1];
+
+      if (y <= y1 && y2 <= y || y1 <= y && y <= y2) {
+        x = (y - y1) / (y2 - y1) * (x2 - x1) + x1;
+        intersections.push(x);
+      }
+
+      x1 = x2;
+      y1 = y2;
+    }
+  } // Find the longest segment of the horizontal line that has its center point
+  // inside the linear ring.
+
+
+  var pointX = NaN;
+  var maxSegmentLength = -Infinity;
+  intersections.sort(_array.numberSafeCompareFunction);
+  x1 = intersections[0];
+
+  for (i = 1, ii = intersections.length; i < ii; ++i) {
+    x2 = intersections[i];
+    var segmentLength = Math.abs(x2 - x1);
+
+    if (segmentLength > maxSegmentLength) {
+      x = (x1 + x2) / 2;
+
+      if ((0, _contains.linearRingsContainsXY)(flatCoordinates, offset, ends, stride, x, y)) {
+        pointX = x;
+        maxSegmentLength = segmentLength;
+      }
+    }
+
+    x1 = x2;
+  }
+
+  if (isNaN(pointX)) {
+    // There is no horizontal line that has its center point inside the linear
+    // ring.  Use the center of the the linear ring's extent.
+    pointX = flatCenters[flatCentersOffset];
+  }
+
+  if (opt_dest) {
+    opt_dest.push(pointX, y, maxSegmentLength);
+    return opt_dest;
+  } else {
+    return [pointX, y, maxSegmentLength];
+  }
+}
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @param {Array<number>} flatCenters Flat centers.
+ * @return {Array<number>} Interior points as XYM coordinates, where M is the
+ * length of the horizontal intersection that the point belongs to.
+ */
+
+
+function getInteriorPointsOfMultiArray(flatCoordinates, offset, endss, stride, flatCenters) {
+  var interiorPoints = [];
+
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+    interiorPoints = getInteriorPointOfArray(flatCoordinates, offset, ends, stride, flatCenters, 2 * i, interiorPoints);
+    offset = ends[ends.length - 1];
+  }
+
+  return interiorPoints;
+}
+},{"./contains.js":"../node_modules/ol/geom/flat/contains.js","../../array.js":"../node_modules/ol/array.js"}],"../node_modules/ol/geom/flat/reverse.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.coordinates = coordinates;
+
+/**
+ * @module ol/geom/flat/reverse
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ */
+function coordinates(flatCoordinates, offset, end, stride) {
+  while (offset < end - stride) {
+    for (var i = 0; i < stride; ++i) {
+      var tmp = flatCoordinates[offset + i];
+      flatCoordinates[offset + i] = flatCoordinates[end - stride + i];
+      flatCoordinates[end - stride + i] = tmp;
+    }
+
+    offset += stride;
+    end -= stride;
+  }
+}
+},{}],"../node_modules/ol/geom/flat/orient.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.linearRingIsClockwise = linearRingIsClockwise;
+exports.linearRingsAreOriented = linearRingsAreOriented;
+exports.linearRingssAreOriented = linearRingssAreOriented;
+exports.orientLinearRings = orientLinearRings;
+exports.orientLinearRingsArray = orientLinearRingsArray;
+
+var _reverse = require("./reverse.js");
+
+/**
+ * @module ol/geom/flat/orient
+ */
+
+/**
+ * Is the linear ring oriented clockwise in a coordinate system with a bottom-left
+ * coordinate origin? For a coordinate system with a top-left coordinate origin,
+ * the ring's orientation is clockwise when this function returns false.
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {number} end End.
+ * @param {number} stride Stride.
+ * @return {boolean} Is clockwise.
+ */
+function linearRingIsClockwise(flatCoordinates, offset, end, stride) {
+  // https://stackoverflow.com/q/1165647/clockwise-method#1165943
+  // https://github.com/OSGeo/gdal/blob/master/gdal/ogr/ogrlinearring.cpp
+  var edge = 0;
+  var x1 = flatCoordinates[end - stride];
+  var y1 = flatCoordinates[end - stride + 1];
+
+  for (; offset < end; offset += stride) {
+    var x2 = flatCoordinates[offset];
+    var y2 = flatCoordinates[offset + 1];
+    edge += (x2 - x1) * (y2 + y1);
+    x1 = x2;
+    y1 = y2;
+  }
+
+  return edge === 0 ? undefined : edge > 0;
+}
+/**
+ * Determines if linear rings are oriented.  By default, left-hand orientation
+ * is tested (first ring must be clockwise, remaining rings counter-clockwise).
+ * To test for right-hand orientation, use the `opt_right` argument.
+ *
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Array of end indexes.
+ * @param {number} stride Stride.
+ * @param {boolean} [opt_right] Test for right-hand orientation
+ *     (counter-clockwise exterior ring and clockwise interior rings).
+ * @return {boolean} Rings are correctly oriented.
+ */
+
+
+function linearRingsAreOriented(flatCoordinates, offset, ends, stride, opt_right) {
+  var right = opt_right !== undefined ? opt_right : false;
+
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    var end = ends[i];
+    var isClockwise = linearRingIsClockwise(flatCoordinates, offset, end, stride);
+
+    if (i === 0) {
+      if (right && isClockwise || !right && !isClockwise) {
+        return false;
+      }
+    } else {
+      if (right && !isClockwise || !right && isClockwise) {
+        return false;
+      }
+    }
+
+    offset = end;
+  }
+
+  return true;
+}
+/**
+ * Determines if linear rings are oriented.  By default, left-hand orientation
+ * is tested (first ring must be clockwise, remaining rings counter-clockwise).
+ * To test for right-hand orientation, use the `opt_right` argument.
+ *
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Array of array of end indexes.
+ * @param {number} stride Stride.
+ * @param {boolean} [opt_right] Test for right-hand orientation
+ *     (counter-clockwise exterior ring and clockwise interior rings).
+ * @return {boolean} Rings are correctly oriented.
+ */
+
+
+function linearRingssAreOriented(flatCoordinates, offset, endss, stride, opt_right) {
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+
+    if (!linearRingsAreOriented(flatCoordinates, offset, ends, stride, opt_right)) {
+      return false;
+    }
+
+    if (ends.length) {
+      offset = ends[ends.length - 1];
+    }
+  }
+
+  return true;
+}
+/**
+ * Orient coordinates in a flat array of linear rings.  By default, rings
+ * are oriented following the left-hand rule (clockwise for exterior and
+ * counter-clockwise for interior rings).  To orient according to the
+ * right-hand rule, use the `opt_right` argument.
+ *
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<number>} ends Ends.
+ * @param {number} stride Stride.
+ * @param {boolean} [opt_right] Follow the right-hand rule for orientation.
+ * @return {number} End.
+ */
+
+
+function orientLinearRings(flatCoordinates, offset, ends, stride, opt_right) {
+  var right = opt_right !== undefined ? opt_right : false;
+
+  for (var i = 0, ii = ends.length; i < ii; ++i) {
+    var end = ends[i];
+    var isClockwise = linearRingIsClockwise(flatCoordinates, offset, end, stride);
+    var reverse = i === 0 ? right && isClockwise || !right && !isClockwise : right && !isClockwise || !right && isClockwise;
+
+    if (reverse) {
+      (0, _reverse.coordinates)(flatCoordinates, offset, end, stride);
+    }
+
+    offset = end;
+  }
+
+  return offset;
+}
+/**
+ * Orient coordinates in a flat array of linear rings.  By default, rings
+ * are oriented following the left-hand rule (clockwise for exterior and
+ * counter-clockwise for interior rings).  To orient according to the
+ * right-hand rule, use the `opt_right` argument.
+ *
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Array of array of end indexes.
+ * @param {number} stride Stride.
+ * @param {boolean} [opt_right] Follow the right-hand rule for orientation.
+ * @return {number} End.
+ */
+
+
+function orientLinearRingsArray(flatCoordinates, offset, endss, stride, opt_right) {
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    offset = orientLinearRings(flatCoordinates, offset, endss[i], stride, opt_right);
+  }
+
+  return offset;
+}
+},{"./reverse.js":"../node_modules/ol/geom/flat/reverse.js"}],"../node_modules/ol/geom/Polygon.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.circular = circular;
+exports.default = void 0;
+exports.fromCircle = fromCircle;
+exports.fromExtent = fromExtent;
+exports.makeRegular = makeRegular;
+
+var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
+
+var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
+
+var _LinearRing = _interopRequireDefault(require("./LinearRing.js"));
+
+var _Point = _interopRequireDefault(require("./Point.js"));
+
+var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
+
+var _closest = require("./flat/closest.js");
+
+var _extent = require("../extent.js");
+
+var _deflate = require("./flat/deflate.js");
+
+var _array = require("../array.js");
+
+var _interiorpoint = require("./flat/interiorpoint.js");
+
+var _inflate = require("./flat/inflate.js");
+
+var _intersectsextent = require("./flat/intersectsextent.js");
+
+var _orient = require("./flat/orient.js");
+
+var _area = require("./flat/area.js");
+
+var _contains = require("./flat/contains.js");
+
+var _math = require("../math.js");
+
+var _simplify = require("./flat/simplify.js");
+
+var _sphere = require("../sphere.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/Polygon
+ */
+
+
+/**
+ * @classdesc
+ * Polygon geometry.
+ *
+ * @api
+ */
+var Polygon =
+/** @class */
+function (_super) {
+  __extends(Polygon, _super);
+  /**
+   * @param {!Array<Array<import("../coordinate.js").Coordinate>>|!Array<number>} coordinates
+   *     Array of linear rings that define the polygon. The first linear ring of the
+   *     array defines the outer-boundary or surface of the polygon. Each subsequent
+   *     linear ring defines a hole in the surface of the polygon. A linear ring is
+   *     an array of vertices' coordinates where the first coordinate and the last are
+   *     equivalent. (For internal use, flat coordinates in combination with
+   *     `opt_layout` and `opt_ends` are also accepted.)
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @param {Array<number>} [opt_ends] Ends (for internal use with flat coordinates).
+   */
+
+
+  function Polygon(coordinates, opt_layout, opt_ends) {
+    var _this = _super.call(this) || this;
+    /**
+     * @type {Array<number>}
+     * @private
+     */
+
+
+    _this.ends_ = [];
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.flatInteriorPointRevision_ = -1;
+    /**
+     * @private
+     * @type {import("../coordinate.js").Coordinate}
+     */
+
+    _this.flatInteriorPoint_ = null;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDelta_ = -1;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDeltaRevision_ = -1;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.orientedRevision_ = -1;
+    /**
+     * @private
+     * @type {Array<number>}
+     */
+
+    _this.orientedFlatCoordinates_ = null;
+
+    if (opt_layout !== undefined && opt_ends) {
+      _this.setFlatCoordinates(opt_layout,
+      /** @type {Array<number>} */
+      coordinates);
+
+      _this.ends_ = opt_ends;
+    } else {
+      _this.setCoordinates(
+      /** @type {Array<Array<import("../coordinate.js").Coordinate>>} */
+      coordinates, opt_layout);
+    }
+
+    return _this;
+  }
+  /**
+   * Append the passed linear ring to this polygon.
+   * @param {LinearRing} linearRing Linear ring.
+   * @api
+   */
+
+
+  Polygon.prototype.appendLinearRing = function (linearRing) {
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = linearRing.getFlatCoordinates().slice();
+    } else {
+      (0, _array.extend)(this.flatCoordinates, linearRing.getFlatCoordinates());
+    }
+
+    this.ends_.push(this.flatCoordinates.length);
+    this.changed();
+  };
+  /**
+   * Make a complete copy of the geometry.
+   * @return {!Polygon} Clone.
+   * @api
+   */
+
+
+  Polygon.prototype.clone = function () {
+    var polygon = new Polygon(this.flatCoordinates.slice(), this.layout, this.ends_.slice());
+    polygon.applyProperties(this);
+    return polygon;
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  Polygon.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
+      return minSquaredDistance;
+    }
+
+    if (this.maxDeltaRevision_ != this.getRevision()) {
+      this.maxDelta_ = Math.sqrt((0, _closest.arrayMaxSquaredDelta)(this.flatCoordinates, 0, this.ends_, this.stride, 0));
+      this.maxDeltaRevision_ = this.getRevision();
+    }
+
+    return (0, _closest.assignClosestArrayPoint)(this.flatCoordinates, 0, this.ends_, this.stride, this.maxDelta_, true, x, y, closestPoint, minSquaredDistance);
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @return {boolean} Contains (x, y).
+   */
+
+
+  Polygon.prototype.containsXY = function (x, y) {
+    return (0, _contains.linearRingsContainsXY)(this.getOrientedFlatCoordinates(), 0, this.ends_, this.stride, x, y);
+  };
+  /**
+   * Return the area of the polygon on projected plane.
+   * @return {number} Area (on projected plane).
+   * @api
+   */
+
+
+  Polygon.prototype.getArea = function () {
+    return (0, _area.linearRings)(this.getOrientedFlatCoordinates(), 0, this.ends_, this.stride);
+  };
+  /**
+   * Get the coordinate array for this geometry.  This array has the structure
+   * of a GeoJSON coordinate array for polygons.
+   *
+   * @param {boolean} [opt_right] Orient coordinates according to the right-hand
+   *     rule (counter-clockwise for exterior and clockwise for interior rings).
+   *     If `false`, coordinates will be oriented according to the left-hand rule
+   *     (clockwise for exterior and counter-clockwise for interior rings).
+   *     By default, coordinate orientation will depend on how the geometry was
+   *     constructed.
+   * @return {Array<Array<import("../coordinate.js").Coordinate>>} Coordinates.
+   * @api
+   */
+
+
+  Polygon.prototype.getCoordinates = function (opt_right) {
+    var flatCoordinates;
+
+    if (opt_right !== undefined) {
+      flatCoordinates = this.getOrientedFlatCoordinates().slice();
+      (0, _orient.orientLinearRings)(flatCoordinates, 0, this.ends_, this.stride, opt_right);
+    } else {
+      flatCoordinates = this.flatCoordinates;
+    }
+
+    return (0, _inflate.inflateCoordinatesArray)(flatCoordinates, 0, this.ends_, this.stride);
+  };
+  /**
+   * @return {Array<number>} Ends.
+   */
+
+
+  Polygon.prototype.getEnds = function () {
+    return this.ends_;
+  };
+  /**
+   * @return {Array<number>} Interior point.
+   */
+
+
+  Polygon.prototype.getFlatInteriorPoint = function () {
+    if (this.flatInteriorPointRevision_ != this.getRevision()) {
+      var flatCenter = (0, _extent.getCenter)(this.getExtent());
+      this.flatInteriorPoint_ = (0, _interiorpoint.getInteriorPointOfArray)(this.getOrientedFlatCoordinates(), 0, this.ends_, this.stride, flatCenter, 0);
+      this.flatInteriorPointRevision_ = this.getRevision();
+    }
+
+    return this.flatInteriorPoint_;
+  };
+  /**
+   * Return an interior point of the polygon.
+   * @return {Point} Interior point as XYM coordinate, where M is the
+   * length of the horizontal intersection that the point belongs to.
+   * @api
+   */
+
+
+  Polygon.prototype.getInteriorPoint = function () {
+    return new _Point.default(this.getFlatInteriorPoint(), _GeometryLayout.default.XYM);
+  };
+  /**
+   * Return the number of rings of the polygon,  this includes the exterior
+   * ring and any interior rings.
+   *
+   * @return {number} Number of rings.
+   * @api
+   */
+
+
+  Polygon.prototype.getLinearRingCount = function () {
+    return this.ends_.length;
+  };
+  /**
+   * Return the Nth linear ring of the polygon geometry. Return `null` if the
+   * given index is out of range.
+   * The exterior linear ring is available at index `0` and the interior rings
+   * at index `1` and beyond.
+   *
+   * @param {number} index Index.
+   * @return {LinearRing} Linear ring.
+   * @api
+   */
+
+
+  Polygon.prototype.getLinearRing = function (index) {
+    if (index < 0 || this.ends_.length <= index) {
+      return null;
+    }
+
+    return new _LinearRing.default(this.flatCoordinates.slice(index === 0 ? 0 : this.ends_[index - 1], this.ends_[index]), this.layout);
+  };
+  /**
+   * Return the linear rings of the polygon.
+   * @return {Array<LinearRing>} Linear rings.
+   * @api
+   */
+
+
+  Polygon.prototype.getLinearRings = function () {
+    var layout = this.layout;
+    var flatCoordinates = this.flatCoordinates;
+    var ends = this.ends_;
+    var linearRings = [];
+    var offset = 0;
+
+    for (var i = 0, ii = ends.length; i < ii; ++i) {
+      var end = ends[i];
+      var linearRing = new _LinearRing.default(flatCoordinates.slice(offset, end), layout);
+      linearRings.push(linearRing);
+      offset = end;
+    }
+
+    return linearRings;
+  };
+  /**
+   * @return {Array<number>} Oriented flat coordinates.
+   */
+
+
+  Polygon.prototype.getOrientedFlatCoordinates = function () {
+    if (this.orientedRevision_ != this.getRevision()) {
+      var flatCoordinates = this.flatCoordinates;
+
+      if ((0, _orient.linearRingsAreOriented)(flatCoordinates, 0, this.ends_, this.stride)) {
+        this.orientedFlatCoordinates_ = flatCoordinates;
+      } else {
+        this.orientedFlatCoordinates_ = flatCoordinates.slice();
+        this.orientedFlatCoordinates_.length = (0, _orient.orientLinearRings)(this.orientedFlatCoordinates_, 0, this.ends_, this.stride);
+      }
+
+      this.orientedRevision_ = this.getRevision();
+    }
+
+    return this.orientedFlatCoordinates_;
+  };
+  /**
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {Polygon} Simplified Polygon.
+   * @protected
+   */
+
+
+  Polygon.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
+    var simplifiedFlatCoordinates = [];
+    var simplifiedEnds = [];
+    simplifiedFlatCoordinates.length = (0, _simplify.quantizeArray)(this.flatCoordinates, 0, this.ends_, this.stride, Math.sqrt(squaredTolerance), simplifiedFlatCoordinates, 0, simplifiedEnds);
+    return new Polygon(simplifiedFlatCoordinates, _GeometryLayout.default.XY, simplifiedEnds);
+  };
+  /**
+   * Get the type of this geometry.
+   * @return {import("./GeometryType.js").default} Geometry type.
+   * @api
+   */
+
+
+  Polygon.prototype.getType = function () {
+    return _GeometryType.default.POLYGON;
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   * @api
+   */
+
+
+  Polygon.prototype.intersectsExtent = function (extent) {
+    return (0, _intersectsextent.intersectsLinearRingArray)(this.getOrientedFlatCoordinates(), 0, this.ends_, this.stride, extent);
+  };
+  /**
+   * Set the coordinates of the polygon.
+   * @param {!Array<Array<import("../coordinate.js").Coordinate>>} coordinates Coordinates.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @api
+   */
+
+
+  Polygon.prototype.setCoordinates = function (coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 2);
+
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = [];
+    }
+
+    var ends = (0, _deflate.deflateCoordinatesArray)(this.flatCoordinates, 0, coordinates, this.stride, this.ends_);
+    this.flatCoordinates.length = ends.length === 0 ? 0 : ends[ends.length - 1];
+    this.changed();
+  };
+
+  return Polygon;
+}(_SimpleGeometry.default);
+
+var _default = Polygon;
+/**
+ * Create an approximation of a circle on the surface of a sphere.
+ * @param {import("../coordinate.js").Coordinate} center Center (`[lon, lat]` in degrees).
+ * @param {number} radius The great-circle distance from the center to
+ *     the polygon vertices in meters.
+ * @param {number} [opt_n] Optional number of vertices for the resulting
+ *     polygon. Default is `32`.
+ * @param {number} [opt_sphereRadius] Optional radius for the sphere (defaults to
+ *     the Earth's mean radius using the WGS84 ellipsoid).
+ * @return {Polygon} The "circular" polygon.
+ * @api
+ */
+
+exports.default = _default;
+
+function circular(center, radius, opt_n, opt_sphereRadius) {
+  var n = opt_n ? opt_n : 32;
+  /** @type {Array<number>} */
+
+  var flatCoordinates = [];
+
+  for (var i = 0; i < n; ++i) {
+    (0, _array.extend)(flatCoordinates, (0, _sphere.offset)(center, radius, 2 * Math.PI * i / n, opt_sphereRadius));
+  }
+
+  flatCoordinates.push(flatCoordinates[0], flatCoordinates[1]);
+  return new Polygon(flatCoordinates, _GeometryLayout.default.XY, [flatCoordinates.length]);
+}
+/**
+ * Create a polygon from an extent. The layout used is `XY`.
+ * @param {import("../extent.js").Extent} extent The extent.
+ * @return {Polygon} The polygon.
+ * @api
+ */
+
+
+function fromExtent(extent) {
+  var minX = extent[0];
+  var minY = extent[1];
+  var maxX = extent[2];
+  var maxY = extent[3];
+  var flatCoordinates = [minX, minY, minX, maxY, maxX, maxY, maxX, minY, minX, minY];
+  return new Polygon(flatCoordinates, _GeometryLayout.default.XY, [flatCoordinates.length]);
+}
+/**
+ * Create a regular polygon from a circle.
+ * @param {import("./Circle.js").default} circle Circle geometry.
+ * @param {number} [opt_sides] Number of sides of the polygon. Default is 32.
+ * @param {number} [opt_angle] Start angle for the first vertex of the polygon in
+ *     counter-clockwise radians. 0 means East. Default is 0.
+ * @return {Polygon} Polygon geometry.
+ * @api
+ */
+
+
+function fromCircle(circle, opt_sides, opt_angle) {
+  var sides = opt_sides ? opt_sides : 32;
+  var stride = circle.getStride();
+  var layout = circle.getLayout();
+  var center = circle.getCenter();
+  var arrayLength = stride * (sides + 1);
+  var flatCoordinates = new Array(arrayLength);
+
+  for (var i = 0; i < arrayLength; i += stride) {
+    flatCoordinates[i] = 0;
+    flatCoordinates[i + 1] = 0;
+
+    for (var j = 2; j < stride; j++) {
+      flatCoordinates[i + j] = center[j];
+    }
+  }
+
+  var ends = [flatCoordinates.length];
+  var polygon = new Polygon(flatCoordinates, layout, ends);
+  makeRegular(polygon, center, circle.getRadius(), opt_angle);
+  return polygon;
+}
+/**
+ * Modify the coordinates of a polygon to make it a regular polygon.
+ * @param {Polygon} polygon Polygon geometry.
+ * @param {import("../coordinate.js").Coordinate} center Center of the regular polygon.
+ * @param {number} radius Radius of the regular polygon.
+ * @param {number} [opt_angle] Start angle for the first vertex of the polygon in
+ *     counter-clockwise radians. 0 means East. Default is 0.
+ */
+
+
+function makeRegular(polygon, center, radius, opt_angle) {
+  var flatCoordinates = polygon.getFlatCoordinates();
+  var stride = polygon.getStride();
+  var sides = flatCoordinates.length / stride - 1;
+  var startAngle = opt_angle ? opt_angle : 0;
+
+  for (var i = 0; i <= sides; ++i) {
+    var offset = i * stride;
+    var angle = startAngle + (0, _math.modulo)(i, sides) * 2 * Math.PI / sides;
+    flatCoordinates[offset] = center[0] + radius * Math.cos(angle);
+    flatCoordinates[offset + 1] = center[1] + radius * Math.sin(angle);
+  }
+
+  polygon.changed();
+}
+},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./LinearRing.js":"../node_modules/ol/geom/LinearRing.js","./Point.js":"../node_modules/ol/geom/Point.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","../array.js":"../node_modules/ol/array.js","./flat/interiorpoint.js":"../node_modules/ol/geom/flat/interiorpoint.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/intersectsextent.js":"../node_modules/ol/geom/flat/intersectsextent.js","./flat/orient.js":"../node_modules/ol/geom/flat/orient.js","./flat/area.js":"../node_modules/ol/geom/flat/area.js","./flat/contains.js":"../node_modules/ol/geom/flat/contains.js","../math.js":"../node_modules/ol/math.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js","../sphere.js":"../node_modules/ol/sphere.js"}],"../node_modules/ol/geom/flat/center.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.linearRingss = linearRingss;
+
+var _extent = require("../../extent.js");
+
+/**
+ * @module ol/geom/flat/center
+ */
+
+/**
+ * @param {Array<number>} flatCoordinates Flat coordinates.
+ * @param {number} offset Offset.
+ * @param {Array<Array<number>>} endss Endss.
+ * @param {number} stride Stride.
+ * @return {Array<number>} Flat centers.
+ */
+function linearRingss(flatCoordinates, offset, endss, stride) {
+  var flatCenters = [];
+  var extent = (0, _extent.createEmpty)();
+
+  for (var i = 0, ii = endss.length; i < ii; ++i) {
+    var ends = endss[i];
+    extent = (0, _extent.createOrUpdateFromFlatCoordinates)(flatCoordinates, offset, ends[0], stride);
+    flatCenters.push((extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2);
+    offset = ends[ends.length - 1];
+  }
+
+  return flatCenters;
+}
+},{"../../extent.js":"../node_modules/ol/extent.js"}],"../node_modules/ol/geom/MultiPolygon.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
+
+var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
+
+var _MultiPoint = _interopRequireDefault(require("./MultiPoint.js"));
+
+var _Polygon = _interopRequireDefault(require("./Polygon.js"));
+
+var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
+
+var _closest = require("./flat/closest.js");
+
+var _extent = require("../extent.js");
+
+var _deflate = require("./flat/deflate.js");
+
+var _array = require("../array.js");
+
+var _interiorpoint = require("./flat/interiorpoint.js");
+
+var _inflate = require("./flat/inflate.js");
+
+var _intersectsextent = require("./flat/intersectsextent.js");
+
+var _orient = require("./flat/orient.js");
+
+var _area = require("./flat/area.js");
+
+var _center = require("./flat/center.js");
+
+var _contains = require("./flat/contains.js");
+
+var _simplify = require("./flat/simplify.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/geom/MultiPolygon
+ */
+
+
+/**
+ * @classdesc
+ * Multi-polygon geometry.
+ *
+ * @api
+ */
+var MultiPolygon =
+/** @class */
+function (_super) {
+  __extends(MultiPolygon, _super);
+  /**
+   * @param {Array<Array<Array<import("../coordinate.js").Coordinate>>|Polygon>|Array<number>} coordinates Coordinates.
+   *     For internal use, flat coordinates in combination with `opt_layout` and `opt_endss` are also accepted.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @param {Array<Array<number>>} [opt_endss] Array of ends for internal use with flat coordinates.
+   */
+
+
+  function MultiPolygon(coordinates, opt_layout, opt_endss) {
+    var _this = _super.call(this) || this;
+    /**
+     * @type {Array<Array<number>>}
+     * @private
+     */
+
+
+    _this.endss_ = [];
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.flatInteriorPointsRevision_ = -1;
+    /**
+     * @private
+     * @type {Array<number>}
+     */
+
+    _this.flatInteriorPoints_ = null;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDelta_ = -1;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.maxDeltaRevision_ = -1;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    _this.orientedRevision_ = -1;
+    /**
+     * @private
+     * @type {Array<number>}
+     */
+
+    _this.orientedFlatCoordinates_ = null;
+
+    if (!opt_endss && !Array.isArray(coordinates[0])) {
+      var layout = _this.getLayout();
+
+      var polygons =
+      /** @type {Array<Polygon>} */
+      coordinates;
+      var flatCoordinates = [];
+      var endss = [];
+
+      for (var i = 0, ii = polygons.length; i < ii; ++i) {
+        var polygon = polygons[i];
+
+        if (i === 0) {
+          layout = polygon.getLayout();
+        }
+
+        var offset = flatCoordinates.length;
+        var ends = polygon.getEnds();
+
+        for (var j = 0, jj = ends.length; j < jj; ++j) {
+          ends[j] += offset;
+        }
+
+        (0, _array.extend)(flatCoordinates, polygon.getFlatCoordinates());
+        endss.push(ends);
+      }
+
+      opt_layout = layout;
+      coordinates = flatCoordinates;
+      opt_endss = endss;
+    }
+
+    if (opt_layout !== undefined && opt_endss) {
+      _this.setFlatCoordinates(opt_layout,
+      /** @type {Array<number>} */
+      coordinates);
+
+      _this.endss_ = opt_endss;
+    } else {
+      _this.setCoordinates(
+      /** @type {Array<Array<Array<import("../coordinate.js").Coordinate>>>} */
+      coordinates, opt_layout);
+    }
+
+    return _this;
+  }
+  /**
+   * Append the passed polygon to this multipolygon.
+   * @param {Polygon} polygon Polygon.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.appendPolygon = function (polygon) {
+    /** @type {Array<number>} */
+    var ends;
+
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = polygon.getFlatCoordinates().slice();
+      ends = polygon.getEnds().slice();
+      this.endss_.push();
+    } else {
+      var offset = this.flatCoordinates.length;
+      (0, _array.extend)(this.flatCoordinates, polygon.getFlatCoordinates());
+      ends = polygon.getEnds().slice();
+
+      for (var i = 0, ii = ends.length; i < ii; ++i) {
+        ends[i] += offset;
+      }
+    }
+
+    this.endss_.push(ends);
+    this.changed();
+  };
+  /**
+   * Make a complete copy of the geometry.
+   * @return {!MultiPolygon} Clone.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.clone = function () {
+    var len = this.endss_.length;
+    var newEndss = new Array(len);
+
+    for (var i = 0; i < len; ++i) {
+      newEndss[i] = this.endss_[i].slice();
+    }
+
+    var multiPolygon = new MultiPolygon(this.flatCoordinates.slice(), this.layout, newEndss);
+    multiPolygon.applyProperties(this);
+    return multiPolygon;
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
+   * @param {number} minSquaredDistance Minimum squared distance.
+   * @return {number} Minimum squared distance.
+   */
+
+
+  MultiPolygon.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
+    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
+      return minSquaredDistance;
+    }
+
+    if (this.maxDeltaRevision_ != this.getRevision()) {
+      this.maxDelta_ = Math.sqrt((0, _closest.multiArrayMaxSquaredDelta)(this.flatCoordinates, 0, this.endss_, this.stride, 0));
+      this.maxDeltaRevision_ = this.getRevision();
+    }
+
+    return (0, _closest.assignClosestMultiArrayPoint)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride, this.maxDelta_, true, x, y, closestPoint, minSquaredDistance);
+  };
+  /**
+   * @param {number} x X.
+   * @param {number} y Y.
+   * @return {boolean} Contains (x, y).
+   */
+
+
+  MultiPolygon.prototype.containsXY = function (x, y) {
+    return (0, _contains.linearRingssContainsXY)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride, x, y);
+  };
+  /**
+   * Return the area of the multipolygon on projected plane.
+   * @return {number} Area (on projected plane).
+   * @api
+   */
+
+
+  MultiPolygon.prototype.getArea = function () {
+    return (0, _area.linearRingss)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride);
+  };
+  /**
+   * Get the coordinate array for this geometry.  This array has the structure
+   * of a GeoJSON coordinate array for multi-polygons.
+   *
+   * @param {boolean} [opt_right] Orient coordinates according to the right-hand
+   *     rule (counter-clockwise for exterior and clockwise for interior rings).
+   *     If `false`, coordinates will be oriented according to the left-hand rule
+   *     (clockwise for exterior and counter-clockwise for interior rings).
+   *     By default, coordinate orientation will depend on how the geometry was
+   *     constructed.
+   * @return {Array<Array<Array<import("../coordinate.js").Coordinate>>>} Coordinates.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.getCoordinates = function (opt_right) {
+    var flatCoordinates;
+
+    if (opt_right !== undefined) {
+      flatCoordinates = this.getOrientedFlatCoordinates().slice();
+      (0, _orient.orientLinearRingsArray)(flatCoordinates, 0, this.endss_, this.stride, opt_right);
+    } else {
+      flatCoordinates = this.flatCoordinates;
+    }
+
+    return (0, _inflate.inflateMultiCoordinatesArray)(flatCoordinates, 0, this.endss_, this.stride);
+  };
+  /**
+   * @return {Array<Array<number>>} Endss.
+   */
+
+
+  MultiPolygon.prototype.getEndss = function () {
+    return this.endss_;
+  };
+  /**
+   * @return {Array<number>} Flat interior points.
+   */
+
+
+  MultiPolygon.prototype.getFlatInteriorPoints = function () {
+    if (this.flatInteriorPointsRevision_ != this.getRevision()) {
+      var flatCenters = (0, _center.linearRingss)(this.flatCoordinates, 0, this.endss_, this.stride);
+      this.flatInteriorPoints_ = (0, _interiorpoint.getInteriorPointsOfMultiArray)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride, flatCenters);
+      this.flatInteriorPointsRevision_ = this.getRevision();
+    }
+
+    return this.flatInteriorPoints_;
+  };
+  /**
+   * Return the interior points as {@link module:ol/geom/MultiPoint multipoint}.
+   * @return {MultiPoint} Interior points as XYM coordinates, where M is
+   * the length of the horizontal intersection that the point belongs to.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.getInteriorPoints = function () {
+    return new _MultiPoint.default(this.getFlatInteriorPoints().slice(), _GeometryLayout.default.XYM);
+  };
+  /**
+   * @return {Array<number>} Oriented flat coordinates.
+   */
+
+
+  MultiPolygon.prototype.getOrientedFlatCoordinates = function () {
+    if (this.orientedRevision_ != this.getRevision()) {
+      var flatCoordinates = this.flatCoordinates;
+
+      if ((0, _orient.linearRingssAreOriented)(flatCoordinates, 0, this.endss_, this.stride)) {
+        this.orientedFlatCoordinates_ = flatCoordinates;
+      } else {
+        this.orientedFlatCoordinates_ = flatCoordinates.slice();
+        this.orientedFlatCoordinates_.length = (0, _orient.orientLinearRingsArray)(this.orientedFlatCoordinates_, 0, this.endss_, this.stride);
+      }
+
+      this.orientedRevision_ = this.getRevision();
+    }
+
+    return this.orientedFlatCoordinates_;
+  };
+  /**
+   * @param {number} squaredTolerance Squared tolerance.
+   * @return {MultiPolygon} Simplified MultiPolygon.
+   * @protected
+   */
+
+
+  MultiPolygon.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
+    var simplifiedFlatCoordinates = [];
+    var simplifiedEndss = [];
+    simplifiedFlatCoordinates.length = (0, _simplify.quantizeMultiArray)(this.flatCoordinates, 0, this.endss_, this.stride, Math.sqrt(squaredTolerance), simplifiedFlatCoordinates, 0, simplifiedEndss);
+    return new MultiPolygon(simplifiedFlatCoordinates, _GeometryLayout.default.XY, simplifiedEndss);
+  };
+  /**
+   * Return the polygon at the specified index.
+   * @param {number} index Index.
+   * @return {Polygon} Polygon.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.getPolygon = function (index) {
+    if (index < 0 || this.endss_.length <= index) {
+      return null;
+    }
+
+    var offset;
+
+    if (index === 0) {
+      offset = 0;
+    } else {
+      var prevEnds = this.endss_[index - 1];
+      offset = prevEnds[prevEnds.length - 1];
+    }
+
+    var ends = this.endss_[index].slice();
+    var end = ends[ends.length - 1];
+
+    if (offset !== 0) {
+      for (var i = 0, ii = ends.length; i < ii; ++i) {
+        ends[i] -= offset;
+      }
+    }
+
+    return new _Polygon.default(this.flatCoordinates.slice(offset, end), this.layout, ends);
+  };
+  /**
+   * Return the polygons of this multipolygon.
+   * @return {Array<Polygon>} Polygons.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.getPolygons = function () {
+    var layout = this.layout;
+    var flatCoordinates = this.flatCoordinates;
+    var endss = this.endss_;
+    var polygons = [];
+    var offset = 0;
+
+    for (var i = 0, ii = endss.length; i < ii; ++i) {
+      var ends = endss[i].slice();
+      var end = ends[ends.length - 1];
+
+      if (offset !== 0) {
+        for (var j = 0, jj = ends.length; j < jj; ++j) {
+          ends[j] -= offset;
+        }
+      }
+
+      var polygon = new _Polygon.default(flatCoordinates.slice(offset, end), layout, ends);
+      polygons.push(polygon);
+      offset = end;
+    }
+
+    return polygons;
+  };
+  /**
+   * Get the type of this geometry.
+   * @return {import("./GeometryType.js").default} Geometry type.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.getType = function () {
+    return _GeometryType.default.MULTI_POLYGON;
+  };
+  /**
+   * Test if the geometry and the passed extent intersect.
+   * @param {import("../extent.js").Extent} extent Extent.
+   * @return {boolean} `true` if the geometry and the extent intersect.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.intersectsExtent = function (extent) {
+    return (0, _intersectsextent.intersectsLinearRingMultiArray)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride, extent);
+  };
+  /**
+   * Set the coordinates of the multipolygon.
+   * @param {!Array<Array<Array<import("../coordinate.js").Coordinate>>>} coordinates Coordinates.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @api
+   */
+
+
+  MultiPolygon.prototype.setCoordinates = function (coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 3);
+
+    if (!this.flatCoordinates) {
+      this.flatCoordinates = [];
+    }
+
+    var endss = (0, _deflate.deflateMultiCoordinatesArray)(this.flatCoordinates, 0, coordinates, this.stride, this.endss_);
+
+    if (endss.length === 0) {
+      this.flatCoordinates.length = 0;
+    } else {
+      var lastEnds = endss[endss.length - 1];
+      this.flatCoordinates.length = lastEnds.length === 0 ? 0 : lastEnds[lastEnds.length - 1];
+    }
+
+    this.changed();
+  };
+
+  return MultiPolygon;
+}(_SimpleGeometry.default);
+
+var _default = MultiPolygon;
+exports.default = _default;
+},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./MultiPoint.js":"../node_modules/ol/geom/MultiPoint.js","./Polygon.js":"../node_modules/ol/geom/Polygon.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","../array.js":"../node_modules/ol/array.js","./flat/interiorpoint.js":"../node_modules/ol/geom/flat/interiorpoint.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/intersectsextent.js":"../node_modules/ol/geom/flat/intersectsextent.js","./flat/orient.js":"../node_modules/ol/geom/flat/orient.js","./flat/area.js":"../node_modules/ol/geom/flat/area.js","./flat/center.js":"../node_modules/ol/geom/flat/center.js","./flat/contains.js":"../node_modules/ol/geom/flat/contains.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js"}],"../node_modules/ol/format/GeoJSON.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _Feature = _interopRequireDefault(require("../Feature.js"));
+
+var _GeometryCollection = _interopRequireDefault(require("../geom/GeometryCollection.js"));
+
+var _GeometryType = _interopRequireDefault(require("../geom/GeometryType.js"));
+
+var _JSONFeature = _interopRequireDefault(require("./JSONFeature.js"));
+
+var _LineString = _interopRequireDefault(require("../geom/LineString.js"));
+
+var _MultiLineString = _interopRequireDefault(require("../geom/MultiLineString.js"));
+
+var _MultiPoint = _interopRequireDefault(require("../geom/MultiPoint.js"));
+
+var _MultiPolygon = _interopRequireDefault(require("../geom/MultiPolygon.js"));
+
+var _Point = _interopRequireDefault(require("../geom/Point.js"));
+
+var _Polygon = _interopRequireDefault(require("../geom/Polygon.js"));
+
+var _asserts = require("../asserts.js");
+
+var _obj = require("../obj.js");
+
+var _proj = require("../proj.js");
+
+var _Feature2 = require("./Feature.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * @module ol/format/GeoJSON
+ */
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+
+/**
+ * @typedef {import("geojson").GeoJSON} GeoJSONObject
+ * @typedef {import("geojson").Feature} GeoJSONFeature
+ * @typedef {import("geojson").FeatureCollection} GeoJSONFeatureCollection
+ * @typedef {import("geojson").Geometry} GeoJSONGeometry
+ * @typedef {import("geojson").Point} GeoJSONPoint
+ * @typedef {import("geojson").LineString} GeoJSONLineString
+ * @typedef {import("geojson").Polygon} GeoJSONPolygon
+ * @typedef {import("geojson").MultiPoint} GeoJSONMultiPoint
+ * @typedef {import("geojson").MultiLineString} GeoJSONMultiLineString
+ * @typedef {import("geojson").MultiPolygon} GeoJSONMultiPolygon
+ * @typedef {import("geojson").GeometryCollection} GeoJSONGeometryCollection
+ */
+
+/**
+ * @typedef {Object} Options
+ * @property {import("../proj.js").ProjectionLike} [dataProjection='EPSG:4326'] Default data projection.
+ * @property {import("../proj.js").ProjectionLike} [featureProjection] Projection for features read or
+ * written by the format.  Options passed to read or write methods will take precedence.
+ * @property {string} [geometryName] Geometry name to use when creating features.
+ * @property {boolean} [extractGeometryName=false] Certain GeoJSON providers include
+ * the geometry_name field in the feature GeoJSON. If set to `true` the GeoJSON reader
+ * will look for that field to set the geometry name. If both this field is set to `true`
+ * and a `geometryName` is provided, the `geometryName` will take precedence.
+ */
+
+/**
+ * @classdesc
+ * Feature format for reading and writing data in the GeoJSON format.
+ *
+ * @api
+ */
+var GeoJSON =
+/** @class */
+function (_super) {
+  __extends(GeoJSON, _super);
+  /**
+   * @param {Options} [opt_options] Options.
+   */
+
+
+  function GeoJSON(opt_options) {
+    var _this = this;
+
+    var options = opt_options ? opt_options : {};
+    _this = _super.call(this) || this;
+    /**
+     * @type {import("../proj/Projection.js").default}
+     */
+
+    _this.dataProjection = (0, _proj.get)(options.dataProjection ? options.dataProjection : 'EPSG:4326');
+
+    if (options.featureProjection) {
+      _this.defaultFeatureProjection = (0, _proj.get)(options.featureProjection);
+    }
+    /**
+     * Name of the geometry attribute for features.
+     * @type {string|undefined}
+     * @private
+     */
+
+
+    _this.geometryName_ = options.geometryName;
+    /**
+     * Look for the geometry name in the feature GeoJSON
+     * @type {boolean|undefined}
+     * @private
+     */
+
+    _this.extractGeometryName_ = options.extractGeometryName;
+    _this.supportedMediaTypes = ['application/geo+json', 'application/vnd.geo+json'];
+    return _this;
+  }
+  /**
+   * @param {Object} object Object.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @protected
+   * @return {import("../Feature.js").default} Feature.
+   */
+
+
+  GeoJSON.prototype.readFeatureFromObject = function (object, opt_options) {
+    /**
+     * @type {GeoJSONFeature}
+     */
+    var geoJSONFeature = null;
+
+    if (object['type'] === 'Feature') {
+      geoJSONFeature =
+      /** @type {GeoJSONFeature} */
+      object;
+    } else {
+      geoJSONFeature = {
+        'type': 'Feature',
+        'geometry':
+        /** @type {GeoJSONGeometry} */
+        object,
+        'properties': null
+      };
+    }
+
+    var geometry = readGeometry(geoJSONFeature['geometry'], opt_options);
+    var feature = new _Feature.default();
+
+    if (this.geometryName_) {
+      feature.setGeometryName(this.geometryName_);
+    } else if (this.extractGeometryName_ && 'geometry_name' in geoJSONFeature !== undefined) {
+      feature.setGeometryName(geoJSONFeature['geometry_name']);
+    }
+
+    feature.setGeometry(geometry);
+
+    if ('id' in geoJSONFeature) {
+      feature.setId(geoJSONFeature['id']);
+    }
+
+    if (geoJSONFeature['properties']) {
+      feature.setProperties(geoJSONFeature['properties'], true);
+    }
+
+    return feature;
+  };
+  /**
+   * @param {Object} object Object.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @protected
+   * @return {Array<Feature>} Features.
+   */
+
+
+  GeoJSON.prototype.readFeaturesFromObject = function (object, opt_options) {
+    var geoJSONObject =
+    /** @type {GeoJSONObject} */
+    object;
+    /** @type {Array<import("../Feature.js").default>} */
+
+    var features = null;
+
+    if (geoJSONObject['type'] === 'FeatureCollection') {
+      var geoJSONFeatureCollection =
+      /** @type {GeoJSONFeatureCollection} */
+      object;
+      features = [];
+      var geoJSONFeatures = geoJSONFeatureCollection['features'];
+
+      for (var i = 0, ii = geoJSONFeatures.length; i < ii; ++i) {
+        features.push(this.readFeatureFromObject(geoJSONFeatures[i], opt_options));
+      }
+    } else {
+      features = [this.readFeatureFromObject(object, opt_options)];
+    }
+
+    return features;
+  };
+  /**
+   * @param {GeoJSONGeometry} object Object.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+   * @protected
+   * @return {import("../geom/Geometry.js").default} Geometry.
+   */
+
+
+  GeoJSON.prototype.readGeometryFromObject = function (object, opt_options) {
+    return readGeometry(object, opt_options);
+  };
+  /**
+   * @param {Object} object Object.
+   * @protected
+   * @return {import("../proj/Projection.js").default} Projection.
+   */
+
+
+  GeoJSON.prototype.readProjectionFromObject = function (object) {
+    var crs = object['crs'];
+    var projection;
+
+    if (crs) {
+      if (crs['type'] == 'name') {
+        projection = (0, _proj.get)(crs['properties']['name']);
+      } else if (crs['type'] === 'EPSG') {
+        projection = (0, _proj.get)('EPSG:' + crs['properties']['code']);
+      } else {
+        (0, _asserts.assert)(false, 36); // Unknown SRS type
+      }
+    } else {
+      projection = this.dataProjection;
+    }
+
+    return (
+      /** @type {import("../proj/Projection.js").default} */
+      projection
+    );
+  };
+  /**
+   * Encode a feature as a GeoJSON Feature object.
+   *
+   * @param {import("../Feature.js").default} feature Feature.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {GeoJSONFeature} Object.
+   * @api
+   */
+
+
+  GeoJSON.prototype.writeFeatureObject = function (feature, opt_options) {
+    opt_options = this.adaptOptions(opt_options);
+    /** @type {GeoJSONFeature} */
+
+    var object = {
+      'type': 'Feature',
+      geometry: null,
+      properties: null
+    };
+    var id = feature.getId();
+
+    if (id !== undefined) {
+      object.id = id;
+    }
+
+    if (!feature.hasProperties()) {
+      return object;
+    }
+
+    var properties = feature.getProperties();
+    var geometry = feature.getGeometry();
+
+    if (geometry) {
+      object.geometry = writeGeometry(geometry, opt_options);
+      delete properties[feature.getGeometryName()];
+    }
+
+    if (!(0, _obj.isEmpty)(properties)) {
+      object.properties = properties;
+    }
+
+    return object;
+  };
+  /**
+   * Encode an array of features as a GeoJSON object.
+   *
+   * @param {Array<import("../Feature.js").default>} features Features.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {GeoJSONFeatureCollection} GeoJSON Object.
+   * @api
+   */
+
+
+  GeoJSON.prototype.writeFeaturesObject = function (features, opt_options) {
+    opt_options = this.adaptOptions(opt_options);
+    var objects = [];
+
+    for (var i = 0, ii = features.length; i < ii; ++i) {
+      objects.push(this.writeFeatureObject(features[i], opt_options));
+    }
+
+    return {
+      type: 'FeatureCollection',
+      features: objects
+    };
+  };
+  /**
+   * Encode a geometry as a GeoJSON object.
+   *
+   * @param {import("../geom/Geometry.js").default} geometry Geometry.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+   * @return {GeoJSONGeometry|GeoJSONGeometryCollection} Object.
+   * @api
+   */
+
+
+  GeoJSON.prototype.writeGeometryObject = function (geometry, opt_options) {
+    return writeGeometry(geometry, this.adaptOptions(opt_options));
+  };
+
+  return GeoJSON;
+}(_JSONFeature.default);
+/**
+ * @param {GeoJSONGeometry|GeoJSONGeometryCollection} object Object.
+ * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+ * @return {import("../geom/Geometry.js").default} Geometry.
+ */
+
+
+function readGeometry(object, opt_options) {
+  if (!object) {
+    return null;
+  }
+  /**
+   * @type {import("../geom/Geometry.js").default}
+   */
+
+
+  var geometry;
+
+  switch (object['type']) {
+    case _GeometryType.default.POINT:
+      {
+        geometry = readPointGeometry(
+        /** @type {GeoJSONPoint} */
+        object);
+        break;
+      }
+
+    case _GeometryType.default.LINE_STRING:
+      {
+        geometry = readLineStringGeometry(
+        /** @type {GeoJSONLineString} */
+        object);
+        break;
+      }
+
+    case _GeometryType.default.POLYGON:
+      {
+        geometry = readPolygonGeometry(
+        /** @type {GeoJSONPolygon} */
+        object);
+        break;
+      }
+
+    case _GeometryType.default.MULTI_POINT:
+      {
+        geometry = readMultiPointGeometry(
+        /** @type {GeoJSONMultiPoint} */
+        object);
+        break;
+      }
+
+    case _GeometryType.default.MULTI_LINE_STRING:
+      {
+        geometry = readMultiLineStringGeometry(
+        /** @type {GeoJSONMultiLineString} */
+        object);
+        break;
+      }
+
+    case _GeometryType.default.MULTI_POLYGON:
+      {
+        geometry = readMultiPolygonGeometry(
+        /** @type {GeoJSONMultiPolygon} */
+        object);
+        break;
+      }
+
+    case _GeometryType.default.GEOMETRY_COLLECTION:
+      {
+        geometry = readGeometryCollectionGeometry(
+        /** @type {GeoJSONGeometryCollection} */
+        object);
+        break;
+      }
+
+    default:
+      {
+        throw new Error('Unsupported GeoJSON type: ' + object.type);
+      }
+  }
+
+  return (0, _Feature2.transformGeometryWithOptions)(geometry, false, opt_options);
+}
+/**
+ * @param {GeoJSONGeometryCollection} object Object.
+ * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
+ * @return {GeometryCollection} Geometry collection.
+ */
+
+
+function readGeometryCollectionGeometry(object, opt_options) {
+  var geometries = object['geometries'].map(
+  /**
+   * @param {GeoJSONGeometry} geometry Geometry.
+   * @return {import("../geom/Geometry.js").default} geometry Geometry.
+   */
+  function (geometry) {
+    return readGeometry(geometry, opt_options);
+  });
+  return new _GeometryCollection.default(geometries);
+}
+/**
+ * @param {GeoJSONPoint} object Object.
+ * @return {Point} Point.
+ */
+
+
+function readPointGeometry(object) {
+  return new _Point.default(object['coordinates']);
+}
+/**
+ * @param {GeoJSONLineString} object Object.
+ * @return {LineString} LineString.
+ */
+
+
+function readLineStringGeometry(object) {
+  return new _LineString.default(object['coordinates']);
+}
+/**
+ * @param {GeoJSONMultiLineString} object Object.
+ * @return {MultiLineString} MultiLineString.
+ */
+
+
+function readMultiLineStringGeometry(object) {
+  return new _MultiLineString.default(object['coordinates']);
+}
+/**
+ * @param {GeoJSONMultiPoint} object Object.
+ * @return {MultiPoint} MultiPoint.
+ */
+
+
+function readMultiPointGeometry(object) {
+  return new _MultiPoint.default(object['coordinates']);
+}
+/**
+ * @param {GeoJSONMultiPolygon} object Object.
+ * @return {MultiPolygon} MultiPolygon.
+ */
+
+
+function readMultiPolygonGeometry(object) {
+  return new _MultiPolygon.default(object['coordinates']);
+}
+/**
+ * @param {GeoJSONPolygon} object Object.
+ * @return {Polygon} Polygon.
+ */
+
+
+function readPolygonGeometry(object) {
+  return new _Polygon.default(object['coordinates']);
+}
+/**
+ * @param {import("../geom/Geometry.js").default} geometry Geometry.
+ * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+ * @return {GeoJSONGeometry} GeoJSON geometry.
+ */
+
+
+function writeGeometry(geometry, opt_options) {
+  geometry = (0, _Feature2.transformGeometryWithOptions)(geometry, true, opt_options);
+  var type = geometry.getType();
+  /** @type {GeoJSONGeometry} */
+
+  var geoJSON;
+
+  switch (type) {
+    case _GeometryType.default.POINT:
+      {
+        geoJSON = writePointGeometry(
+        /** @type {Point} */
+        geometry, opt_options);
+        break;
+      }
+
+    case _GeometryType.default.LINE_STRING:
+      {
+        geoJSON = writeLineStringGeometry(
+        /** @type {LineString} */
+        geometry, opt_options);
+        break;
+      }
+
+    case _GeometryType.default.POLYGON:
+      {
+        geoJSON = writePolygonGeometry(
+        /** @type {Polygon} */
+        geometry, opt_options);
+        break;
+      }
+
+    case _GeometryType.default.MULTI_POINT:
+      {
+        geoJSON = writeMultiPointGeometry(
+        /** @type {MultiPoint} */
+        geometry, opt_options);
+        break;
+      }
+
+    case _GeometryType.default.MULTI_LINE_STRING:
+      {
+        geoJSON = writeMultiLineStringGeometry(
+        /** @type {MultiLineString} */
+        geometry, opt_options);
+        break;
+      }
+
+    case _GeometryType.default.MULTI_POLYGON:
+      {
+        geoJSON = writeMultiPolygonGeometry(
+        /** @type {MultiPolygon} */
+        geometry, opt_options);
+        break;
+      }
+
+    case _GeometryType.default.GEOMETRY_COLLECTION:
+      {
+        geoJSON = writeGeometryCollectionGeometry(
+        /** @type {GeometryCollection} */
+        geometry, opt_options);
+        break;
+      }
+
+    case _GeometryType.default.CIRCLE:
+      {
+        geoJSON = {
+          type: 'GeometryCollection',
+          geometries: []
+        };
+        break;
+      }
+
+    default:
+      {
+        throw new Error('Unsupported geometry type: ' + type);
+      }
+  }
+
+  return geoJSON;
+}
+/**
+ * @param {GeometryCollection} geometry Geometry.
+ * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+ * @return {GeoJSONGeometryCollection} GeoJSON geometry collection.
+ */
+
+
+function writeGeometryCollectionGeometry(geometry, opt_options) {
+  var geometries = geometry.getGeometriesArray().map(function (geometry) {
+    var options = (0, _obj.assign)({}, opt_options);
+    delete options.featureProjection;
+    return writeGeometry(geometry, options);
+  });
+  return {
+    type: 'GeometryCollection',
+    geometries: geometries
+  };
+}
+/**
+ * @param {LineString} geometry Geometry.
+ * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+ * @return {GeoJSONGeometry} GeoJSON geometry.
+ */
+
+
+function writeLineStringGeometry(geometry, opt_options) {
+  return {
+    type: 'LineString',
+    coordinates: geometry.getCoordinates()
+  };
+}
+/**
+ * @param {MultiLineString} geometry Geometry.
+ * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+ * @return {GeoJSONGeometry} GeoJSON geometry.
+ */
+
+
+function writeMultiLineStringGeometry(geometry, opt_options) {
+  return {
+    type: 'MultiLineString',
+    coordinates: geometry.getCoordinates()
+  };
+}
+/**
+ * @param {MultiPoint} geometry Geometry.
+ * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+ * @return {GeoJSONGeometry} GeoJSON geometry.
+ */
+
+
+function writeMultiPointGeometry(geometry, opt_options) {
+  return {
+    type: 'MultiPoint',
+    coordinates: geometry.getCoordinates()
+  };
+}
+/**
+ * @param {MultiPolygon} geometry Geometry.
+ * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+ * @return {GeoJSONGeometry} GeoJSON geometry.
+ */
+
+
+function writeMultiPolygonGeometry(geometry, opt_options) {
+  var right;
+
+  if (opt_options) {
+    right = opt_options.rightHanded;
+  }
+
+  return {
+    type: 'MultiPolygon',
+    coordinates: geometry.getCoordinates(right)
+  };
+}
+/**
+ * @param {Point} geometry Geometry.
+ * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+ * @return {GeoJSONGeometry} GeoJSON geometry.
+ */
+
+
+function writePointGeometry(geometry, opt_options) {
+  return {
+    type: 'Point',
+    coordinates: geometry.getCoordinates()
+  };
+}
+/**
+ * @param {Polygon} geometry Geometry.
+ * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
+ * @return {GeoJSONGeometry} GeoJSON geometry.
+ */
+
+
+function writePolygonGeometry(geometry, opt_options) {
+  var right;
+
+  if (opt_options) {
+    right = opt_options.rightHanded;
+  }
+
+  return {
+    type: 'Polygon',
+    coordinates: geometry.getCoordinates(right)
+  };
+}
+
+var _default = GeoJSON;
+exports.default = _default;
+},{"../Feature.js":"../node_modules/ol/Feature.js","../geom/GeometryCollection.js":"../node_modules/ol/geom/GeometryCollection.js","../geom/GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./JSONFeature.js":"../node_modules/ol/format/JSONFeature.js","../geom/LineString.js":"../node_modules/ol/geom/LineString.js","../geom/MultiLineString.js":"../node_modules/ol/geom/MultiLineString.js","../geom/MultiPoint.js":"../node_modules/ol/geom/MultiPoint.js","../geom/MultiPolygon.js":"../node_modules/ol/geom/MultiPolygon.js","../geom/Point.js":"../node_modules/ol/geom/Point.js","../geom/Polygon.js":"../node_modules/ol/geom/Polygon.js","../asserts.js":"../node_modules/ol/asserts.js","../obj.js":"../node_modules/ol/obj.js","../proj.js":"../node_modules/ol/proj.js","./Feature.js":"../node_modules/ol/format/Feature.js"}],"../node_modules/ol/layer/Property.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -13446,333 +21046,7 @@ function (_super) {
 
 var _default = RenderEvent;
 exports.default = _default;
-},{"../events/Event.js":"../node_modules/ol/events/Event.js"}],"../node_modules/ol/transform.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.apply = apply;
-exports.compose = compose;
-exports.composeCssTransform = composeCssTransform;
-exports.create = create;
-exports.determinant = determinant;
-exports.invert = invert;
-exports.makeInverse = makeInverse;
-exports.makeScale = makeScale;
-exports.multiply = multiply;
-exports.reset = reset;
-exports.rotate = rotate;
-exports.scale = scale;
-exports.set = set;
-exports.setFromArray = setFromArray;
-exports.toString = toString;
-exports.translate = translate;
-
-var _has = require("./has.js");
-
-var _asserts = require("./asserts.js");
-
-/**
- * @module ol/transform
- */
-
-/**
- * An array representing an affine 2d transformation for use with
- * {@link module:ol/transform} functions. The array has 6 elements.
- * @typedef {!Array<number>} Transform
- * @api
- */
-
-/**
- * Collection of affine 2d transformation functions. The functions work on an
- * array of 6 elements. The element order is compatible with the [SVGMatrix
- * interface](https://developer.mozilla.org/en-US/docs/Web/API/SVGMatrix) and is
- * a subset (elements a to f) of a 3×3 matrix:
- * ```
- * [ a c e ]
- * [ b d f ]
- * [ 0 0 1 ]
- * ```
- */
-
-/**
- * @private
- * @type {Transform}
- */
-var tmp_ = new Array(6);
-/**
- * Create an identity transform.
- * @return {!Transform} Identity transform.
- */
-
-function create() {
-  return [1, 0, 0, 1, 0, 0];
-}
-/**
- * Resets the given transform to an identity transform.
- * @param {!Transform} transform Transform.
- * @return {!Transform} Transform.
- */
-
-
-function reset(transform) {
-  return set(transform, 1, 0, 0, 1, 0, 0);
-}
-/**
- * Multiply the underlying matrices of two transforms and return the result in
- * the first transform.
- * @param {!Transform} transform1 Transform parameters of matrix 1.
- * @param {!Transform} transform2 Transform parameters of matrix 2.
- * @return {!Transform} transform1 multiplied with transform2.
- */
-
-
-function multiply(transform1, transform2) {
-  var a1 = transform1[0];
-  var b1 = transform1[1];
-  var c1 = transform1[2];
-  var d1 = transform1[3];
-  var e1 = transform1[4];
-  var f1 = transform1[5];
-  var a2 = transform2[0];
-  var b2 = transform2[1];
-  var c2 = transform2[2];
-  var d2 = transform2[3];
-  var e2 = transform2[4];
-  var f2 = transform2[5];
-  transform1[0] = a1 * a2 + c1 * b2;
-  transform1[1] = b1 * a2 + d1 * b2;
-  transform1[2] = a1 * c2 + c1 * d2;
-  transform1[3] = b1 * c2 + d1 * d2;
-  transform1[4] = a1 * e2 + c1 * f2 + e1;
-  transform1[5] = b1 * e2 + d1 * f2 + f1;
-  return transform1;
-}
-/**
- * Set the transform components a-f on a given transform.
- * @param {!Transform} transform Transform.
- * @param {number} a The a component of the transform.
- * @param {number} b The b component of the transform.
- * @param {number} c The c component of the transform.
- * @param {number} d The d component of the transform.
- * @param {number} e The e component of the transform.
- * @param {number} f The f component of the transform.
- * @return {!Transform} Matrix with transform applied.
- */
-
-
-function set(transform, a, b, c, d, e, f) {
-  transform[0] = a;
-  transform[1] = b;
-  transform[2] = c;
-  transform[3] = d;
-  transform[4] = e;
-  transform[5] = f;
-  return transform;
-}
-/**
- * Set transform on one matrix from another matrix.
- * @param {!Transform} transform1 Matrix to set transform to.
- * @param {!Transform} transform2 Matrix to set transform from.
- * @return {!Transform} transform1 with transform from transform2 applied.
- */
-
-
-function setFromArray(transform1, transform2) {
-  transform1[0] = transform2[0];
-  transform1[1] = transform2[1];
-  transform1[2] = transform2[2];
-  transform1[3] = transform2[3];
-  transform1[4] = transform2[4];
-  transform1[5] = transform2[5];
-  return transform1;
-}
-/**
- * Transforms the given coordinate with the given transform returning the
- * resulting, transformed coordinate. The coordinate will be modified in-place.
- *
- * @param {Transform} transform The transformation.
- * @param {import("./coordinate.js").Coordinate|import("./pixel.js").Pixel} coordinate The coordinate to transform.
- * @return {import("./coordinate.js").Coordinate|import("./pixel.js").Pixel} return coordinate so that operations can be
- *     chained together.
- */
-
-
-function apply(transform, coordinate) {
-  var x = coordinate[0];
-  var y = coordinate[1];
-  coordinate[0] = transform[0] * x + transform[2] * y + transform[4];
-  coordinate[1] = transform[1] * x + transform[3] * y + transform[5];
-  return coordinate;
-}
-/**
- * Applies rotation to the given transform.
- * @param {!Transform} transform Transform.
- * @param {number} angle Angle in radians.
- * @return {!Transform} The rotated transform.
- */
-
-
-function rotate(transform, angle) {
-  var cos = Math.cos(angle);
-  var sin = Math.sin(angle);
-  return multiply(transform, set(tmp_, cos, sin, -sin, cos, 0, 0));
-}
-/**
- * Applies scale to a given transform.
- * @param {!Transform} transform Transform.
- * @param {number} x Scale factor x.
- * @param {number} y Scale factor y.
- * @return {!Transform} The scaled transform.
- */
-
-
-function scale(transform, x, y) {
-  return multiply(transform, set(tmp_, x, 0, 0, y, 0, 0));
-}
-/**
- * Creates a scale transform.
- * @param {!Transform} target Transform to overwrite.
- * @param {number} x Scale factor x.
- * @param {number} y Scale factor y.
- * @return {!Transform} The scale transform.
- */
-
-
-function makeScale(target, x, y) {
-  return set(target, x, 0, 0, y, 0, 0);
-}
-/**
- * Applies translation to the given transform.
- * @param {!Transform} transform Transform.
- * @param {number} dx Translation x.
- * @param {number} dy Translation y.
- * @return {!Transform} The translated transform.
- */
-
-
-function translate(transform, dx, dy) {
-  return multiply(transform, set(tmp_, 1, 0, 0, 1, dx, dy));
-}
-/**
- * Creates a composite transform given an initial translation, scale, rotation, and
- * final translation (in that order only, not commutative).
- * @param {!Transform} transform The transform (will be modified in place).
- * @param {number} dx1 Initial translation x.
- * @param {number} dy1 Initial translation y.
- * @param {number} sx Scale factor x.
- * @param {number} sy Scale factor y.
- * @param {number} angle Rotation (in counter-clockwise radians).
- * @param {number} dx2 Final translation x.
- * @param {number} dy2 Final translation y.
- * @return {!Transform} The composite transform.
- */
-
-
-function compose(transform, dx1, dy1, sx, sy, angle, dx2, dy2) {
-  var sin = Math.sin(angle);
-  var cos = Math.cos(angle);
-  transform[0] = sx * cos;
-  transform[1] = sy * sin;
-  transform[2] = -sx * sin;
-  transform[3] = sy * cos;
-  transform[4] = dx2 * sx * cos - dy2 * sx * sin + dx1;
-  transform[5] = dx2 * sy * sin + dy2 * sy * cos + dy1;
-  return transform;
-}
-/**
- * Creates a composite transform given an initial translation, scale, rotation, and
- * final translation (in that order only, not commutative). The resulting transform
- * string can be applied as `transform` property of an HTMLElement's style.
- * @param {number} dx1 Initial translation x.
- * @param {number} dy1 Initial translation y.
- * @param {number} sx Scale factor x.
- * @param {number} sy Scale factor y.
- * @param {number} angle Rotation (in counter-clockwise radians).
- * @param {number} dx2 Final translation x.
- * @param {number} dy2 Final translation y.
- * @return {string} The composite css transform.
- * @api
- */
-
-
-function composeCssTransform(dx1, dy1, sx, sy, angle, dx2, dy2) {
-  return toString(compose(create(), dx1, dy1, sx, sy, angle, dx2, dy2));
-}
-/**
- * Invert the given transform.
- * @param {!Transform} source The source transform to invert.
- * @return {!Transform} The inverted (source) transform.
- */
-
-
-function invert(source) {
-  return makeInverse(source, source);
-}
-/**
- * Invert the given transform.
- * @param {!Transform} target Transform to be set as the inverse of
- *     the source transform.
- * @param {!Transform} source The source transform to invert.
- * @return {!Transform} The inverted (target) transform.
- */
-
-
-function makeInverse(target, source) {
-  var det = determinant(source);
-  (0, _asserts.assert)(det !== 0, 32); // Transformation matrix cannot be inverted
-
-  var a = source[0];
-  var b = source[1];
-  var c = source[2];
-  var d = source[3];
-  var e = source[4];
-  var f = source[5];
-  target[0] = d / det;
-  target[1] = -b / det;
-  target[2] = -c / det;
-  target[3] = a / det;
-  target[4] = (c * f - d * e) / det;
-  target[5] = -(a * f - b * e) / det;
-  return target;
-}
-/**
- * Returns the determinant of the given matrix.
- * @param {!Transform} mat Matrix.
- * @return {number} Determinant.
- */
-
-
-function determinant(mat) {
-  return mat[0] * mat[3] - mat[1] * mat[2];
-}
-/**
- * @type {HTMLElement}
- * @private
- */
-
-
-var transformStringDiv;
-/**
- * A rounded string version of the transform.  This can be used
- * for CSS transforms.
- * @param {!Transform} mat Matrix.
- * @return {string} The transform as a string.
- */
-
-function toString(mat) {
-  var transformString = 'matrix(' + mat.join(', ') + ')';
-
-  if (_has.WORKER_OFFSCREEN_CANVAS) {
-    return transformString;
-  }
-
-  var node = transformStringDiv || (transformStringDiv = document.createElement('div'));
-  node.style.transform = transformString;
-  return node.style.transform;
-}
-},{"./has.js":"../node_modules/ol/has.js","./asserts.js":"../node_modules/ol/asserts.js"}],"../node_modules/ol/css.js":[function(require,module,exports) {
+},{"../events/Event.js":"../node_modules/ol/events/Event.js"}],"../node_modules/ol/css.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -14913,5674 +22187,10 @@ function (_super) {
 
 var _default = TileLayer;
 exports.default = _default;
-},{"./BaseTile.js":"../node_modules/ol/layer/BaseTile.js","../renderer/canvas/TileLayer.js":"../node_modules/ol/renderer/canvas/TileLayer.js"}],"../node_modules/ol/CollectionEventType.js":[function(require,module,exports) {
-"use strict";
+},{"./BaseTile.js":"../node_modules/ol/layer/BaseTile.js","../renderer/canvas/TileLayer.js":"../node_modules/ol/renderer/canvas/TileLayer.js"}],"../node_modules/rbush/rbush.min.js":[function(require,module,exports) {
+var define;
+!function(t,i){"object"==typeof exports&&"undefined"!=typeof module?module.exports=i():"function"==typeof define&&define.amd?define(i):(t=t||self).RBush=i()}(this,function(){"use strict";function t(t,r,e,a,h){!function t(n,r,e,a,h){for(;a>e;){if(a-e>600){var o=a-e+1,s=r-e+1,l=Math.log(o),f=.5*Math.exp(2*l/3),u=.5*Math.sqrt(l*f*(o-f)/o)*(s-o/2<0?-1:1),m=Math.max(e,Math.floor(r-s*f/o+u)),c=Math.min(a,Math.floor(r+(o-s)*f/o+u));t(n,r,m,c,h)}var p=n[r],d=e,x=a;for(i(n,e,r),h(n[a],p)>0&&i(n,e,a);d<x;){for(i(n,d,x),d++,x--;h(n[d],p)<0;)d++;for(;h(n[x],p)>0;)x--}0===h(n[e],p)?i(n,e,x):i(n,++x,a),x<=r&&(e=x+1),r<=x&&(a=x-1)}}(t,r,e||0,a||t.length-1,h||n)}function i(t,i,n){var r=t[i];t[i]=t[n],t[n]=r}function n(t,i){return t<i?-1:t>i?1:0}var r=function(t){void 0===t&&(t=9),this._maxEntries=Math.max(4,t),this._minEntries=Math.max(2,Math.ceil(.4*this._maxEntries)),this.clear()};function e(t,i,n){if(!n)return i.indexOf(t);for(var r=0;r<i.length;r++)if(n(t,i[r]))return r;return-1}function a(t,i){h(t,0,t.children.length,i,t)}function h(t,i,n,r,e){e||(e=p(null)),e.minX=1/0,e.minY=1/0,e.maxX=-1/0,e.maxY=-1/0;for(var a=i;a<n;a++){var h=t.children[a];o(e,t.leaf?r(h):h)}return e}function o(t,i){return t.minX=Math.min(t.minX,i.minX),t.minY=Math.min(t.minY,i.minY),t.maxX=Math.max(t.maxX,i.maxX),t.maxY=Math.max(t.maxY,i.maxY),t}function s(t,i){return t.minX-i.minX}function l(t,i){return t.minY-i.minY}function f(t){return(t.maxX-t.minX)*(t.maxY-t.minY)}function u(t){return t.maxX-t.minX+(t.maxY-t.minY)}function m(t,i){return t.minX<=i.minX&&t.minY<=i.minY&&i.maxX<=t.maxX&&i.maxY<=t.maxY}function c(t,i){return i.minX<=t.maxX&&i.minY<=t.maxY&&i.maxX>=t.minX&&i.maxY>=t.minY}function p(t){return{children:t,height:1,leaf:!0,minX:1/0,minY:1/0,maxX:-1/0,maxY:-1/0}}function d(i,n,r,e,a){for(var h=[n,r];h.length;)if(!((r=h.pop())-(n=h.pop())<=e)){var o=n+Math.ceil((r-n)/e/2)*e;t(i,o,n,r,a),h.push(n,o,o,r)}}return r.prototype.all=function(){return this._all(this.data,[])},r.prototype.search=function(t){var i=this.data,n=[];if(!c(t,i))return n;for(var r=this.toBBox,e=[];i;){for(var a=0;a<i.children.length;a++){var h=i.children[a],o=i.leaf?r(h):h;c(t,o)&&(i.leaf?n.push(h):m(t,o)?this._all(h,n):e.push(h))}i=e.pop()}return n},r.prototype.collides=function(t){var i=this.data;if(!c(t,i))return!1;for(var n=[];i;){for(var r=0;r<i.children.length;r++){var e=i.children[r],a=i.leaf?this.toBBox(e):e;if(c(t,a)){if(i.leaf||m(t,a))return!0;n.push(e)}}i=n.pop()}return!1},r.prototype.load=function(t){if(!t||!t.length)return this;if(t.length<this._minEntries){for(var i=0;i<t.length;i++)this.insert(t[i]);return this}var n=this._build(t.slice(),0,t.length-1,0);if(this.data.children.length)if(this.data.height===n.height)this._splitRoot(this.data,n);else{if(this.data.height<n.height){var r=this.data;this.data=n,n=r}this._insert(n,this.data.height-n.height-1,!0)}else this.data=n;return this},r.prototype.insert=function(t){return t&&this._insert(t,this.data.height-1),this},r.prototype.clear=function(){return this.data=p([]),this},r.prototype.remove=function(t,i){if(!t)return this;for(var n,r,a,h=this.data,o=this.toBBox(t),s=[],l=[];h||s.length;){if(h||(h=s.pop(),r=s[s.length-1],n=l.pop(),a=!0),h.leaf){var f=e(t,h.children,i);if(-1!==f)return h.children.splice(f,1),s.push(h),this._condense(s),this}a||h.leaf||!m(h,o)?r?(n++,h=r.children[n],a=!1):h=null:(s.push(h),l.push(n),n=0,r=h,h=h.children[0])}return this},r.prototype.toBBox=function(t){return t},r.prototype.compareMinX=function(t,i){return t.minX-i.minX},r.prototype.compareMinY=function(t,i){return t.minY-i.minY},r.prototype.toJSON=function(){return this.data},r.prototype.fromJSON=function(t){return this.data=t,this},r.prototype._all=function(t,i){for(var n=[];t;)t.leaf?i.push.apply(i,t.children):n.push.apply(n,t.children),t=n.pop();return i},r.prototype._build=function(t,i,n,r){var e,h=n-i+1,o=this._maxEntries;if(h<=o)return a(e=p(t.slice(i,n+1)),this.toBBox),e;r||(r=Math.ceil(Math.log(h)/Math.log(o)),o=Math.ceil(h/Math.pow(o,r-1))),(e=p([])).leaf=!1,e.height=r;var s=Math.ceil(h/o),l=s*Math.ceil(Math.sqrt(o));d(t,i,n,l,this.compareMinX);for(var f=i;f<=n;f+=l){var u=Math.min(f+l-1,n);d(t,f,u,s,this.compareMinY);for(var m=f;m<=u;m+=s){var c=Math.min(m+s-1,u);e.children.push(this._build(t,m,c,r-1))}}return a(e,this.toBBox),e},r.prototype._chooseSubtree=function(t,i,n,r){for(;r.push(i),!i.leaf&&r.length-1!==n;){for(var e=1/0,a=1/0,h=void 0,o=0;o<i.children.length;o++){var s=i.children[o],l=f(s),u=(m=t,c=s,(Math.max(c.maxX,m.maxX)-Math.min(c.minX,m.minX))*(Math.max(c.maxY,m.maxY)-Math.min(c.minY,m.minY))-l);u<a?(a=u,e=l<e?l:e,h=s):u===a&&l<e&&(e=l,h=s)}i=h||i.children[0]}var m,c;return i},r.prototype._insert=function(t,i,n){var r=n?t:this.toBBox(t),e=[],a=this._chooseSubtree(r,this.data,i,e);for(a.children.push(t),o(a,r);i>=0&&e[i].children.length>this._maxEntries;)this._split(e,i),i--;this._adjustParentBBoxes(r,e,i)},r.prototype._split=function(t,i){var n=t[i],r=n.children.length,e=this._minEntries;this._chooseSplitAxis(n,e,r);var h=this._chooseSplitIndex(n,e,r),o=p(n.children.splice(h,n.children.length-h));o.height=n.height,o.leaf=n.leaf,a(n,this.toBBox),a(o,this.toBBox),i?t[i-1].children.push(o):this._splitRoot(n,o)},r.prototype._splitRoot=function(t,i){this.data=p([t,i]),this.data.height=t.height+1,this.data.leaf=!1,a(this.data,this.toBBox)},r.prototype._chooseSplitIndex=function(t,i,n){for(var r,e,a,o,s,l,u,m=1/0,c=1/0,p=i;p<=n-i;p++){var d=h(t,0,p,this.toBBox),x=h(t,p,n,this.toBBox),v=(e=d,a=x,o=void 0,s=void 0,l=void 0,u=void 0,o=Math.max(e.minX,a.minX),s=Math.max(e.minY,a.minY),l=Math.min(e.maxX,a.maxX),u=Math.min(e.maxY,a.maxY),Math.max(0,l-o)*Math.max(0,u-s)),M=f(d)+f(x);v<m?(m=v,r=p,c=M<c?M:c):v===m&&M<c&&(c=M,r=p)}return r||n-i},r.prototype._chooseSplitAxis=function(t,i,n){var r=t.leaf?this.compareMinX:s,e=t.leaf?this.compareMinY:l;this._allDistMargin(t,i,n,r)<this._allDistMargin(t,i,n,e)&&t.children.sort(r)},r.prototype._allDistMargin=function(t,i,n,r){t.children.sort(r);for(var e=this.toBBox,a=h(t,0,i,e),s=h(t,n-i,n,e),l=u(a)+u(s),f=i;f<n-i;f++){var m=t.children[f];o(a,t.leaf?e(m):m),l+=u(a)}for(var c=n-i-1;c>=i;c--){var p=t.children[c];o(s,t.leaf?e(p):p),l+=u(s)}return l},r.prototype._adjustParentBBoxes=function(t,i,n){for(var r=n;r>=0;r--)o(i[r],t)},r.prototype._condense=function(t){for(var i=t.length-1,n=void 0;i>=0;i--)0===t[i].children.length?i>0?(n=t[i-1].children).splice(n.indexOf(t[i]),1):this.clear():a(t[i],this.toBBox)},r});
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-/**
- * @module ol/CollectionEventType
- */
-
-/**
- * @enum {string}
- */
-var _default = {
-  /**
-   * Triggered when an item is added to the collection.
-   * @event module:ol/Collection.CollectionEvent#add
-   * @api
-   */
-  ADD: 'add',
-
-  /**
-   * Triggered when an item is removed from the collection.
-   * @event module:ol/Collection.CollectionEvent#remove
-   * @api
-   */
-  REMOVE: 'remove'
-};
-exports.default = _default;
-},{}],"../node_modules/ol/Collection.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = exports.CollectionEvent = void 0;
-
-var _AssertionError = _interopRequireDefault(require("./AssertionError.js"));
-
-var _Object = _interopRequireDefault(require("./Object.js"));
-
-var _CollectionEventType = _interopRequireDefault(require("./CollectionEventType.js"));
-
-var _Event = _interopRequireDefault(require("./events/Event.js"));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/Collection
- */
-
-
-/**
- * @enum {string}
- * @private
- */
-var Property = {
-  LENGTH: 'length'
-};
-/**
- * @classdesc
- * Events emitted by {@link module:ol/Collection~Collection} instances are instances of this
- * type.
- */
-
-var CollectionEvent =
-/** @class */
-function (_super) {
-  __extends(CollectionEvent, _super);
-  /**
-   * @param {import("./CollectionEventType.js").default} type Type.
-   * @param {*} [opt_element] Element.
-   * @param {number} [opt_index] The index of the added or removed element.
-   */
-
-
-  function CollectionEvent(type, opt_element, opt_index) {
-    var _this = _super.call(this, type) || this;
-    /**
-     * The element that is added to or removed from the collection.
-     * @type {*}
-     * @api
-     */
-
-
-    _this.element = opt_element;
-    /**
-     * The index of the added or removed element.
-     * @type {number}
-     * @api
-     */
-
-    _this.index = opt_index;
-    return _this;
-  }
-
-  return CollectionEvent;
-}(_Event.default);
-
-exports.CollectionEvent = CollectionEvent;
-
-/***
- * @template Return
- * @typedef {import("./Observable").OnSignature<import("./Observable").EventTypes, import("./events/Event.js").default, Return> &
- *   import("./Observable").OnSignature<import("./ObjectEventType").Types|'change:length', import("./Object").ObjectEvent, Return> &
- *   import("./Observable").OnSignature<'add'|'remove', CollectionEvent, Return> &
- *   import("./Observable").CombinedOnSignature<import("./Observable").EventTypes|import("./ObjectEventType").Types|
- *     'change:length'|'add'|'remove',Return>} CollectionOnSignature
- */
-
-/**
- * @typedef {Object} Options
- * @property {boolean} [unique=false] Disallow the same item from being added to
- * the collection twice.
- */
-
-/**
- * @classdesc
- * An expanded version of standard JS Array, adding convenience methods for
- * manipulation. Add and remove changes to the Collection trigger a Collection
- * event. Note that this does not cover changes to the objects _within_ the
- * Collection; they trigger events on the appropriate object, not on the
- * Collection as a whole.
- *
- * @fires CollectionEvent
- *
- * @template T
- * @api
- */
-var Collection =
-/** @class */
-function (_super) {
-  __extends(Collection, _super);
-  /**
-   * @param {Array<T>} [opt_array] Array.
-   * @param {Options} [opt_options] Collection options.
-   */
-
-
-  function Collection(opt_array, opt_options) {
-    var _this = _super.call(this) || this;
-    /***
-     * @type {CollectionOnSignature<import("./events").EventsKey>}
-     */
-
-
-    _this.on;
-    /***
-     * @type {CollectionOnSignature<import("./events").EventsKey>}
-     */
-
-    _this.once;
-    /***
-     * @type {CollectionOnSignature<void>}
-     */
-
-    _this.un;
-    var options = opt_options || {};
-    /**
-     * @private
-     * @type {boolean}
-     */
-
-    _this.unique_ = !!options.unique;
-    /**
-     * @private
-     * @type {!Array<T>}
-     */
-
-    _this.array_ = opt_array ? opt_array : [];
-
-    if (_this.unique_) {
-      for (var i = 0, ii = _this.array_.length; i < ii; ++i) {
-        _this.assertUnique_(_this.array_[i], i);
-      }
-    }
-
-    _this.updateLength_();
-
-    return _this;
-  }
-  /**
-   * Remove all elements from the collection.
-   * @api
-   */
-
-
-  Collection.prototype.clear = function () {
-    while (this.getLength() > 0) {
-      this.pop();
-    }
-  };
-  /**
-   * Add elements to the collection.  This pushes each item in the provided array
-   * to the end of the collection.
-   * @param {!Array<T>} arr Array.
-   * @return {Collection<T>} This collection.
-   * @api
-   */
-
-
-  Collection.prototype.extend = function (arr) {
-    for (var i = 0, ii = arr.length; i < ii; ++i) {
-      this.push(arr[i]);
-    }
-
-    return this;
-  };
-  /**
-   * Iterate over each element, calling the provided callback.
-   * @param {function(T, number, Array<T>): *} f The function to call
-   *     for every element. This function takes 3 arguments (the element, the
-   *     index and the array). The return value is ignored.
-   * @api
-   */
-
-
-  Collection.prototype.forEach = function (f) {
-    var array = this.array_;
-
-    for (var i = 0, ii = array.length; i < ii; ++i) {
-      f(array[i], i, array);
-    }
-  };
-  /**
-   * Get a reference to the underlying Array object. Warning: if the array
-   * is mutated, no events will be dispatched by the collection, and the
-   * collection's "length" property won't be in sync with the actual length
-   * of the array.
-   * @return {!Array<T>} Array.
-   * @api
-   */
-
-
-  Collection.prototype.getArray = function () {
-    return this.array_;
-  };
-  /**
-   * Get the element at the provided index.
-   * @param {number} index Index.
-   * @return {T} Element.
-   * @api
-   */
-
-
-  Collection.prototype.item = function (index) {
-    return this.array_[index];
-  };
-  /**
-   * Get the length of this collection.
-   * @return {number} The length of the array.
-   * @observable
-   * @api
-   */
-
-
-  Collection.prototype.getLength = function () {
-    return this.get(Property.LENGTH);
-  };
-  /**
-   * Insert an element at the provided index.
-   * @param {number} index Index.
-   * @param {T} elem Element.
-   * @api
-   */
-
-
-  Collection.prototype.insertAt = function (index, elem) {
-    if (this.unique_) {
-      this.assertUnique_(elem);
-    }
-
-    this.array_.splice(index, 0, elem);
-    this.updateLength_();
-    this.dispatchEvent(new CollectionEvent(_CollectionEventType.default.ADD, elem, index));
-  };
-  /**
-   * Remove the last element of the collection and return it.
-   * Return `undefined` if the collection is empty.
-   * @return {T|undefined} Element.
-   * @api
-   */
-
-
-  Collection.prototype.pop = function () {
-    return this.removeAt(this.getLength() - 1);
-  };
-  /**
-   * Insert the provided element at the end of the collection.
-   * @param {T} elem Element.
-   * @return {number} New length of the collection.
-   * @api
-   */
-
-
-  Collection.prototype.push = function (elem) {
-    if (this.unique_) {
-      this.assertUnique_(elem);
-    }
-
-    var n = this.getLength();
-    this.insertAt(n, elem);
-    return this.getLength();
-  };
-  /**
-   * Remove the first occurrence of an element from the collection.
-   * @param {T} elem Element.
-   * @return {T|undefined} The removed element or undefined if none found.
-   * @api
-   */
-
-
-  Collection.prototype.remove = function (elem) {
-    var arr = this.array_;
-
-    for (var i = 0, ii = arr.length; i < ii; ++i) {
-      if (arr[i] === elem) {
-        return this.removeAt(i);
-      }
-    }
-
-    return undefined;
-  };
-  /**
-   * Remove the element at the provided index and return it.
-   * Return `undefined` if the collection does not contain this index.
-   * @param {number} index Index.
-   * @return {T|undefined} Value.
-   * @api
-   */
-
-
-  Collection.prototype.removeAt = function (index) {
-    var prev = this.array_[index];
-    this.array_.splice(index, 1);
-    this.updateLength_();
-    this.dispatchEvent(new CollectionEvent(_CollectionEventType.default.REMOVE, prev, index));
-    return prev;
-  };
-  /**
-   * Set the element at the provided index.
-   * @param {number} index Index.
-   * @param {T} elem Element.
-   * @api
-   */
-
-
-  Collection.prototype.setAt = function (index, elem) {
-    var n = this.getLength();
-
-    if (index < n) {
-      if (this.unique_) {
-        this.assertUnique_(elem, index);
-      }
-
-      var prev = this.array_[index];
-      this.array_[index] = elem;
-      this.dispatchEvent(new CollectionEvent(_CollectionEventType.default.REMOVE, prev, index));
-      this.dispatchEvent(new CollectionEvent(_CollectionEventType.default.ADD, elem, index));
-    } else {
-      for (var j = n; j < index; ++j) {
-        this.insertAt(j, undefined);
-      }
-
-      this.insertAt(index, elem);
-    }
-  };
-  /**
-   * @private
-   */
-
-
-  Collection.prototype.updateLength_ = function () {
-    this.set(Property.LENGTH, this.array_.length);
-  };
-  /**
-   * @private
-   * @param {T} elem Element.
-   * @param {number} [opt_except] Optional index to ignore.
-   */
-
-
-  Collection.prototype.assertUnique_ = function (elem, opt_except) {
-    for (var i = 0, ii = this.array_.length; i < ii; ++i) {
-      if (this.array_[i] === elem && i !== opt_except) {
-        throw new _AssertionError.default(58);
-      }
-    }
-  };
-
-  return Collection;
-}(_Object.default);
-
-var _default = Collection;
-exports.default = _default;
-},{"./AssertionError.js":"../node_modules/ol/AssertionError.js","./Object.js":"../node_modules/ol/Object.js","./CollectionEventType.js":"../node_modules/ol/CollectionEventType.js","./events/Event.js":"../node_modules/ol/events/Event.js"}],"../node_modules/ol/Feature.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.createStyleFunction = createStyleFunction;
-exports.default = void 0;
-
-var _Object = _interopRequireDefault(require("./Object.js"));
-
-var _EventType = _interopRequireDefault(require("./events/EventType.js"));
-
-var _asserts = require("./asserts.js");
-
-var _events = require("./events.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/Feature
- */
-
-
-/**
- * @typedef {typeof Feature|typeof import("./render/Feature.js").default} FeatureClass
- */
-
-/**
- * @typedef {Feature<import("./geom/Geometry.js").default>|import("./render/Feature.js").default} FeatureLike
- */
-
-/***
- * @template Return
- * @typedef {import("./Observable").OnSignature<import("./Observable").EventTypes, import("./events/Event.js").default, Return> &
- *   import("./Observable").OnSignature<import("./ObjectEventType").Types|'change:geometry', import("./Object").ObjectEvent, Return> &
- *   import("./Observable").CombinedOnSignature<import("./Observable").EventTypes|import("./ObjectEventType").Types
- *     |'change:geometry', Return>} FeatureOnSignature
- */
-
-/***
- * @template Geometry
- * @typedef {Object<string, *> & { geometry?: Geometry }} ObjectWithGeometry
- */
-
-/**
- * @classdesc
- * A vector object for geographic features with a geometry and other
- * attribute properties, similar to the features in vector file formats like
- * GeoJSON.
- *
- * Features can be styled individually with `setStyle`; otherwise they use the
- * style of their vector layer.
- *
- * Note that attribute properties are set as {@link module:ol/Object} properties on
- * the feature object, so they are observable, and have get/set accessors.
- *
- * Typically, a feature has a single geometry property. You can set the
- * geometry using the `setGeometry` method and get it with `getGeometry`.
- * It is possible to store more than one geometry on a feature using attribute
- * properties. By default, the geometry used for rendering is identified by
- * the property name `geometry`. If you want to use another geometry property
- * for rendering, use the `setGeometryName` method to change the attribute
- * property associated with the geometry for the feature.  For example:
- *
- * ```js
- *
- * import Feature from 'ol/Feature';
- * import Polygon from 'ol/geom/Polygon';
- * import Point from 'ol/geom/Point';
- *
- * var feature = new Feature({
- *   geometry: new Polygon(polyCoords),
- *   labelPoint: new Point(labelCoords),
- *   name: 'My Polygon'
- * });
- *
- * // get the polygon geometry
- * var poly = feature.getGeometry();
- *
- * // Render the feature as a point using the coordinates from labelPoint
- * feature.setGeometryName('labelPoint');
- *
- * // get the point geometry
- * var point = feature.getGeometry();
- * ```
- *
- * @api
- * @template {import("./geom/Geometry.js").default} Geometry
- */
-var Feature =
-/** @class */
-function (_super) {
-  __extends(Feature, _super);
-  /**
-   * @param {Geometry|ObjectWithGeometry<Geometry>} [opt_geometryOrProperties]
-   *     You may pass a Geometry object directly, or an object literal containing
-   *     properties. If you pass an object literal, you may include a Geometry
-   *     associated with a `geometry` key.
-   */
-
-
-  function Feature(opt_geometryOrProperties) {
-    var _this = _super.call(this) || this;
-    /***
-     * @type {FeatureOnSignature<import("./events").EventsKey>}
-     */
-
-
-    _this.on;
-    /***
-     * @type {FeatureOnSignature<import("./events").EventsKey>}
-     */
-
-    _this.once;
-    /***
-     * @type {FeatureOnSignature<void>}
-     */
-
-    _this.un;
-    /**
-     * @private
-     * @type {number|string|undefined}
-     */
-
-    _this.id_ = undefined;
-    /**
-     * @type {string}
-     * @private
-     */
-
-    _this.geometryName_ = 'geometry';
-    /**
-     * User provided style.
-     * @private
-     * @type {import("./style/Style.js").StyleLike}
-     */
-
-    _this.style_ = null;
-    /**
-     * @private
-     * @type {import("./style/Style.js").StyleFunction|undefined}
-     */
-
-    _this.styleFunction_ = undefined;
-    /**
-     * @private
-     * @type {?import("./events.js").EventsKey}
-     */
-
-    _this.geometryChangeKey_ = null;
-
-    _this.addChangeListener(_this.geometryName_, _this.handleGeometryChanged_);
-
-    if (opt_geometryOrProperties) {
-      if (typeof
-      /** @type {?} */
-      opt_geometryOrProperties.getSimplifiedGeometry === 'function') {
-        var geometry =
-        /** @type {Geometry} */
-        opt_geometryOrProperties;
-
-        _this.setGeometry(geometry);
-      } else {
-        /** @type {Object<string, *>} */
-        var properties = opt_geometryOrProperties;
-
-        _this.setProperties(properties);
-      }
-    }
-
-    return _this;
-  }
-  /**
-   * Clone this feature. If the original feature has a geometry it
-   * is also cloned. The feature id is not set in the clone.
-   * @return {Feature<Geometry>} The clone.
-   * @api
-   */
-
-
-  Feature.prototype.clone = function () {
-    var clone =
-    /** @type {Feature<Geometry>} */
-    new Feature(this.hasProperties() ? this.getProperties() : null);
-    clone.setGeometryName(this.getGeometryName());
-    var geometry = this.getGeometry();
-
-    if (geometry) {
-      clone.setGeometry(
-      /** @type {Geometry} */
-      geometry.clone());
-    }
-
-    var style = this.getStyle();
-
-    if (style) {
-      clone.setStyle(style);
-    }
-
-    return clone;
-  };
-  /**
-   * Get the feature's default geometry.  A feature may have any number of named
-   * geometries.  The "default" geometry (the one that is rendered by default) is
-   * set when calling {@link module:ol/Feature~Feature#setGeometry}.
-   * @return {Geometry|undefined} The default geometry for the feature.
-   * @api
-   * @observable
-   */
-
-
-  Feature.prototype.getGeometry = function () {
-    return (
-      /** @type {Geometry|undefined} */
-      this.get(this.geometryName_)
-    );
-  };
-  /**
-   * Get the feature identifier.  This is a stable identifier for the feature and
-   * is either set when reading data from a remote source or set explicitly by
-   * calling {@link module:ol/Feature~Feature#setId}.
-   * @return {number|string|undefined} Id.
-   * @api
-   */
-
-
-  Feature.prototype.getId = function () {
-    return this.id_;
-  };
-  /**
-   * Get the name of the feature's default geometry.  By default, the default
-   * geometry is named `geometry`.
-   * @return {string} Get the property name associated with the default geometry
-   *     for this feature.
-   * @api
-   */
-
-
-  Feature.prototype.getGeometryName = function () {
-    return this.geometryName_;
-  };
-  /**
-   * Get the feature's style. Will return what was provided to the
-   * {@link module:ol/Feature~Feature#setStyle} method.
-   * @return {import("./style/Style.js").StyleLike|undefined} The feature style.
-   * @api
-   */
-
-
-  Feature.prototype.getStyle = function () {
-    return this.style_;
-  };
-  /**
-   * Get the feature's style function.
-   * @return {import("./style/Style.js").StyleFunction|undefined} Return a function
-   * representing the current style of this feature.
-   * @api
-   */
-
-
-  Feature.prototype.getStyleFunction = function () {
-    return this.styleFunction_;
-  };
-  /**
-   * @private
-   */
-
-
-  Feature.prototype.handleGeometryChange_ = function () {
-    this.changed();
-  };
-  /**
-   * @private
-   */
-
-
-  Feature.prototype.handleGeometryChanged_ = function () {
-    if (this.geometryChangeKey_) {
-      (0, _events.unlistenByKey)(this.geometryChangeKey_);
-      this.geometryChangeKey_ = null;
-    }
-
-    var geometry = this.getGeometry();
-
-    if (geometry) {
-      this.geometryChangeKey_ = (0, _events.listen)(geometry, _EventType.default.CHANGE, this.handleGeometryChange_, this);
-    }
-
-    this.changed();
-  };
-  /**
-   * Set the default geometry for the feature.  This will update the property
-   * with the name returned by {@link module:ol/Feature~Feature#getGeometryName}.
-   * @param {Geometry|undefined} geometry The new geometry.
-   * @api
-   * @observable
-   */
-
-
-  Feature.prototype.setGeometry = function (geometry) {
-    this.set(this.geometryName_, geometry);
-  };
-  /**
-   * Set the style for the feature to override the layer style.  This can be a
-   * single style object, an array of styles, or a function that takes a
-   * resolution and returns an array of styles. To unset the feature style, call
-   * `setStyle()` without arguments or a falsey value.
-   * @param {import("./style/Style.js").StyleLike} [opt_style] Style for this feature.
-   * @api
-   * @fires module:ol/events/Event~BaseEvent#event:change
-   */
-
-
-  Feature.prototype.setStyle = function (opt_style) {
-    this.style_ = opt_style;
-    this.styleFunction_ = !opt_style ? undefined : createStyleFunction(opt_style);
-    this.changed();
-  };
-  /**
-   * Set the feature id.  The feature id is considered stable and may be used when
-   * requesting features or comparing identifiers returned from a remote source.
-   * The feature id can be used with the
-   * {@link module:ol/source/Vector~VectorSource#getFeatureById} method.
-   * @param {number|string|undefined} id The feature id.
-   * @api
-   * @fires module:ol/events/Event~BaseEvent#event:change
-   */
-
-
-  Feature.prototype.setId = function (id) {
-    this.id_ = id;
-    this.changed();
-  };
-  /**
-   * Set the property name to be used when getting the feature's default geometry.
-   * When calling {@link module:ol/Feature~Feature#getGeometry}, the value of the property with
-   * this name will be returned.
-   * @param {string} name The property name of the default geometry.
-   * @api
-   */
-
-
-  Feature.prototype.setGeometryName = function (name) {
-    this.removeChangeListener(this.geometryName_, this.handleGeometryChanged_);
-    this.geometryName_ = name;
-    this.addChangeListener(this.geometryName_, this.handleGeometryChanged_);
-    this.handleGeometryChanged_();
-  };
-
-  return Feature;
-}(_Object.default);
-/**
- * Convert the provided object into a feature style function.  Functions passed
- * through unchanged.  Arrays of Style or single style objects wrapped
- * in a new feature style function.
- * @param {!import("./style/Style.js").StyleFunction|!Array<import("./style/Style.js").default>|!import("./style/Style.js").default} obj
- *     A feature style function, a single style, or an array of styles.
- * @return {import("./style/Style.js").StyleFunction} A style function.
- */
-
-
-function createStyleFunction(obj) {
-  if (typeof obj === 'function') {
-    return obj;
-  } else {
-    /**
-     * @type {Array<import("./style/Style.js").default>}
-     */
-    var styles_1;
-
-    if (Array.isArray(obj)) {
-      styles_1 = obj;
-    } else {
-      (0, _asserts.assert)(typeof
-      /** @type {?} */
-      obj.getZIndex === 'function', 41); // Expected an `import("./style/Style.js").Style` or an array of `import("./style/Style.js").Style`
-
-      var style =
-      /** @type {import("./style/Style.js").default} */
-      obj;
-      styles_1 = [style];
-    }
-
-    return function () {
-      return styles_1;
-    };
-  }
-}
-
-var _default = Feature;
-exports.default = _default;
-},{"./Object.js":"../node_modules/ol/Object.js","./events/EventType.js":"../node_modules/ol/events/EventType.js","./asserts.js":"../node_modules/ol/asserts.js","./events.js":"../node_modules/ol/events.js"}],"../node_modules/ol/geom/GeometryLayout.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-/**
- * @module ol/geom/GeometryLayout
- */
-
-/**
- * The coordinate layout for geometries, indicating whether a 3rd or 4th z ('Z')
- * or measure ('M') coordinate is available. Supported values are `'XY'`,
- * `'XYZ'`, `'XYM'`, `'XYZM'`.
- * @enum {string}
- */
-var _default = {
-  XY: 'XY',
-  XYZ: 'XYZ',
-  XYM: 'XYM',
-  XYZM: 'XYZM'
-};
-exports.default = _default;
-},{}],"../node_modules/ol/geom/flat/transform.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.rotate = rotate;
-exports.scale = scale;
-exports.transform2D = transform2D;
-exports.translate = translate;
-
-/**
- * @module ol/geom/flat/transform
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {import("../../transform.js").Transform} transform Transform.
- * @param {Array<number>} [opt_dest] Destination.
- * @return {Array<number>} Transformed coordinates.
- */
-function transform2D(flatCoordinates, offset, end, stride, transform, opt_dest) {
-  var dest = opt_dest ? opt_dest : [];
-  var i = 0;
-
-  for (var j = offset; j < end; j += stride) {
-    var x = flatCoordinates[j];
-    var y = flatCoordinates[j + 1];
-    dest[i++] = transform[0] * x + transform[2] * y + transform[4];
-    dest[i++] = transform[1] * x + transform[3] * y + transform[5];
-  }
-
-  if (opt_dest && dest.length != i) {
-    dest.length = i;
-  }
-
-  return dest;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} angle Angle.
- * @param {Array<number>} anchor Rotation anchor point.
- * @param {Array<number>} [opt_dest] Destination.
- * @return {Array<number>} Transformed coordinates.
- */
-
-
-function rotate(flatCoordinates, offset, end, stride, angle, anchor, opt_dest) {
-  var dest = opt_dest ? opt_dest : [];
-  var cos = Math.cos(angle);
-  var sin = Math.sin(angle);
-  var anchorX = anchor[0];
-  var anchorY = anchor[1];
-  var i = 0;
-
-  for (var j = offset; j < end; j += stride) {
-    var deltaX = flatCoordinates[j] - anchorX;
-    var deltaY = flatCoordinates[j + 1] - anchorY;
-    dest[i++] = anchorX + deltaX * cos - deltaY * sin;
-    dest[i++] = anchorY + deltaX * sin + deltaY * cos;
-
-    for (var k = j + 2; k < j + stride; ++k) {
-      dest[i++] = flatCoordinates[k];
-    }
-  }
-
-  if (opt_dest && dest.length != i) {
-    dest.length = i;
-  }
-
-  return dest;
-}
-/**
- * Scale the coordinates.
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} sx Scale factor in the x-direction.
- * @param {number} sy Scale factor in the y-direction.
- * @param {Array<number>} anchor Scale anchor point.
- * @param {Array<number>} [opt_dest] Destination.
- * @return {Array<number>} Transformed coordinates.
- */
-
-
-function scale(flatCoordinates, offset, end, stride, sx, sy, anchor, opt_dest) {
-  var dest = opt_dest ? opt_dest : [];
-  var anchorX = anchor[0];
-  var anchorY = anchor[1];
-  var i = 0;
-
-  for (var j = offset; j < end; j += stride) {
-    var deltaX = flatCoordinates[j] - anchorX;
-    var deltaY = flatCoordinates[j + 1] - anchorY;
-    dest[i++] = anchorX + sx * deltaX;
-    dest[i++] = anchorY + sy * deltaY;
-
-    for (var k = j + 2; k < j + stride; ++k) {
-      dest[i++] = flatCoordinates[k];
-    }
-  }
-
-  if (opt_dest && dest.length != i) {
-    dest.length = i;
-  }
-
-  return dest;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} deltaX Delta X.
- * @param {number} deltaY Delta Y.
- * @param {Array<number>} [opt_dest] Destination.
- * @return {Array<number>} Transformed coordinates.
- */
-
-
-function translate(flatCoordinates, offset, end, stride, deltaX, deltaY, opt_dest) {
-  var dest = opt_dest ? opt_dest : [];
-  var i = 0;
-
-  for (var j = offset; j < end; j += stride) {
-    dest[i++] = flatCoordinates[j] + deltaX;
-    dest[i++] = flatCoordinates[j + 1] + deltaY;
-
-    for (var k = j + 2; k < j + stride; ++k) {
-      dest[i++] = flatCoordinates[k];
-    }
-  }
-
-  if (opt_dest && dest.length != i) {
-    dest.length = i;
-  }
-
-  return dest;
-}
-},{}],"../node_modules/ol/geom/Geometry.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _Object = _interopRequireDefault(require("../Object.js"));
-
-var _Units = _interopRequireDefault(require("../proj/Units.js"));
-
-var _util = require("../util.js");
-
-var _transform = require("../transform.js");
-
-var _extent = require("../extent.js");
-
-var _proj = require("../proj.js");
-
-var _functions = require("../functions.js");
-
-var _transform2 = require("./flat/transform.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/Geometry
- */
-
-
-/**
- * @type {import("../transform.js").Transform}
- */
-var tmpTransform = (0, _transform.create)();
-/**
- * @classdesc
- * Abstract base class; normally only used for creating subclasses and not
- * instantiated in apps.
- * Base class for vector geometries.
- *
- * To get notified of changes to the geometry, register a listener for the
- * generic `change` event on your geometry instance.
- *
- * @abstract
- * @api
- */
-
-var Geometry =
-/** @class */
-function (_super) {
-  __extends(Geometry, _super);
-
-  function Geometry() {
-    var _this = _super.call(this) || this;
-    /**
-     * @private
-     * @type {import("../extent.js").Extent}
-     */
-
-
-    _this.extent_ = (0, _extent.createEmpty)();
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.extentRevision_ = -1;
-    /**
-     * @protected
-     * @type {number}
-     */
-
-    _this.simplifiedGeometryMaxMinSquaredTolerance = 0;
-    /**
-     * @protected
-     * @type {number}
-     */
-
-    _this.simplifiedGeometryRevision = 0;
-    /**
-     * Get a transformed and simplified version of the geometry.
-     * @abstract
-     * @param {number} revision The geometry revision.
-     * @param {number} squaredTolerance Squared tolerance.
-     * @param {import("../proj.js").TransformFunction} [opt_transform] Optional transform function.
-     * @return {Geometry} Simplified geometry.
-     */
-
-    _this.simplifyTransformedInternal = (0, _functions.memoizeOne)(function (revision, squaredTolerance, opt_transform) {
-      if (!opt_transform) {
-        return this.getSimplifiedGeometry(squaredTolerance);
-      }
-
-      var clone = this.clone();
-      clone.applyTransform(opt_transform);
-      return clone.getSimplifiedGeometry(squaredTolerance);
-    });
-    return _this;
-  }
-  /**
-   * Get a transformed and simplified version of the geometry.
-   * @abstract
-   * @param {number} squaredTolerance Squared tolerance.
-   * @param {import("../proj.js").TransformFunction} [opt_transform] Optional transform function.
-   * @return {Geometry} Simplified geometry.
-   */
-
-
-  Geometry.prototype.simplifyTransformed = function (squaredTolerance, opt_transform) {
-    return this.simplifyTransformedInternal(this.getRevision(), squaredTolerance, opt_transform);
-  };
-  /**
-   * Make a complete copy of the geometry.
-   * @abstract
-   * @return {!Geometry} Clone.
-   */
-
-
-  Geometry.prototype.clone = function () {
-    return (0, _util.abstract)();
-  };
-  /**
-   * @abstract
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
-   * @param {number} minSquaredDistance Minimum squared distance.
-   * @return {number} Minimum squared distance.
-   */
-
-
-  Geometry.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
-    return (0, _util.abstract)();
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @return {boolean} Contains (x, y).
-   */
-
-
-  Geometry.prototype.containsXY = function (x, y) {
-    var coord = this.getClosestPoint([x, y]);
-    return coord[0] === x && coord[1] === y;
-  };
-  /**
-   * Return the closest point of the geometry to the passed point as
-   * {@link module:ol/coordinate~Coordinate coordinate}.
-   * @param {import("../coordinate.js").Coordinate} point Point.
-   * @param {import("../coordinate.js").Coordinate} [opt_closestPoint] Closest point.
-   * @return {import("../coordinate.js").Coordinate} Closest point.
-   * @api
-   */
-
-
-  Geometry.prototype.getClosestPoint = function (point, opt_closestPoint) {
-    var closestPoint = opt_closestPoint ? opt_closestPoint : [NaN, NaN];
-    this.closestPointXY(point[0], point[1], closestPoint, Infinity);
-    return closestPoint;
-  };
-  /**
-   * Returns true if this geometry includes the specified coordinate. If the
-   * coordinate is on the boundary of the geometry, returns false.
-   * @param {import("../coordinate.js").Coordinate} coordinate Coordinate.
-   * @return {boolean} Contains coordinate.
-   * @api
-   */
-
-
-  Geometry.prototype.intersectsCoordinate = function (coordinate) {
-    return this.containsXY(coordinate[0], coordinate[1]);
-  };
-  /**
-   * @abstract
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @protected
-   * @return {import("../extent.js").Extent} extent Extent.
-   */
-
-
-  Geometry.prototype.computeExtent = function (extent) {
-    return (0, _util.abstract)();
-  };
-  /**
-   * Get the extent of the geometry.
-   * @param {import("../extent.js").Extent} [opt_extent] Extent.
-   * @return {import("../extent.js").Extent} extent Extent.
-   * @api
-   */
-
-
-  Geometry.prototype.getExtent = function (opt_extent) {
-    if (this.extentRevision_ != this.getRevision()) {
-      var extent = this.computeExtent(this.extent_);
-
-      if (isNaN(extent[0]) || isNaN(extent[1])) {
-        (0, _extent.createOrUpdateEmpty)(extent);
-      }
-
-      this.extentRevision_ = this.getRevision();
-    }
-
-    return (0, _extent.returnOrUpdate)(this.extent_, opt_extent);
-  };
-  /**
-   * Rotate the geometry around a given coordinate. This modifies the geometry
-   * coordinates in place.
-   * @abstract
-   * @param {number} angle Rotation angle in radians.
-   * @param {import("../coordinate.js").Coordinate} anchor The rotation center.
-   * @api
-   */
-
-
-  Geometry.prototype.rotate = function (angle, anchor) {
-    (0, _util.abstract)();
-  };
-  /**
-   * Scale the geometry (with an optional origin).  This modifies the geometry
-   * coordinates in place.
-   * @abstract
-   * @param {number} sx The scaling factor in the x-direction.
-   * @param {number} [opt_sy] The scaling factor in the y-direction (defaults to sx).
-   * @param {import("../coordinate.js").Coordinate} [opt_anchor] The scale origin (defaults to the center
-   *     of the geometry extent).
-   * @api
-   */
-
-
-  Geometry.prototype.scale = function (sx, opt_sy, opt_anchor) {
-    (0, _util.abstract)();
-  };
-  /**
-   * Create a simplified version of this geometry.  For linestrings, this uses
-   * the [Douglas Peucker](https://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm)
-   * algorithm.  For polygons, a quantization-based
-   * simplification is used to preserve topology.
-   * @param {number} tolerance The tolerance distance for simplification.
-   * @return {Geometry} A new, simplified version of the original geometry.
-   * @api
-   */
-
-
-  Geometry.prototype.simplify = function (tolerance) {
-    return this.getSimplifiedGeometry(tolerance * tolerance);
-  };
-  /**
-   * Create a simplified version of this geometry using the Douglas Peucker
-   * algorithm.
-   * See https://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm.
-   * @abstract
-   * @param {number} squaredTolerance Squared tolerance.
-   * @return {Geometry} Simplified geometry.
-   */
-
-
-  Geometry.prototype.getSimplifiedGeometry = function (squaredTolerance) {
-    return (0, _util.abstract)();
-  };
-  /**
-   * Get the type of this geometry.
-   * @abstract
-   * @return {import("./GeometryType.js").default} Geometry type.
-   */
-
-
-  Geometry.prototype.getType = function () {
-    return (0, _util.abstract)();
-  };
-  /**
-   * Apply a transform function to the coordinates of the geometry.
-   * The geometry is modified in place.
-   * If you do not want the geometry modified in place, first `clone()` it and
-   * then use this function on the clone.
-   * @abstract
-   * @param {import("../proj.js").TransformFunction} transformFn Transform function.
-   * Called with a flat array of geometry coordinates.
-   */
-
-
-  Geometry.prototype.applyTransform = function (transformFn) {
-    (0, _util.abstract)();
-  };
-  /**
-   * Test if the geometry and the passed extent intersect.
-   * @abstract
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @return {boolean} `true` if the geometry and the extent intersect.
-   */
-
-
-  Geometry.prototype.intersectsExtent = function (extent) {
-    return (0, _util.abstract)();
-  };
-  /**
-   * Translate the geometry.  This modifies the geometry coordinates in place.  If
-   * instead you want a new geometry, first `clone()` this geometry.
-   * @abstract
-   * @param {number} deltaX Delta X.
-   * @param {number} deltaY Delta Y.
-   * @api
-   */
-
-
-  Geometry.prototype.translate = function (deltaX, deltaY) {
-    (0, _util.abstract)();
-  };
-  /**
-   * Transform each coordinate of the geometry from one coordinate reference
-   * system to another. The geometry is modified in place.
-   * For example, a line will be transformed to a line and a circle to a circle.
-   * If you do not want the geometry modified in place, first `clone()` it and
-   * then use this function on the clone.
-   *
-   * @param {import("../proj.js").ProjectionLike} source The current projection.  Can be a
-   *     string identifier or a {@link module:ol/proj/Projection~Projection} object.
-   * @param {import("../proj.js").ProjectionLike} destination The desired projection.  Can be a
-   *     string identifier or a {@link module:ol/proj/Projection~Projection} object.
-   * @return {Geometry} This geometry.  Note that original geometry is
-   *     modified in place.
-   * @api
-   */
-
-
-  Geometry.prototype.transform = function (source, destination) {
-    /** @type {import("../proj/Projection.js").default} */
-    var sourceProj = (0, _proj.get)(source);
-    var transformFn = sourceProj.getUnits() == _Units.default.TILE_PIXELS ? function (inCoordinates, outCoordinates, stride) {
-      var pixelExtent = sourceProj.getExtent();
-      var projectedExtent = sourceProj.getWorldExtent();
-      var scale = (0, _extent.getHeight)(projectedExtent) / (0, _extent.getHeight)(pixelExtent);
-      (0, _transform.compose)(tmpTransform, projectedExtent[0], projectedExtent[3], scale, -scale, 0, 0, 0);
-      (0, _transform2.transform2D)(inCoordinates, 0, inCoordinates.length, stride, tmpTransform, outCoordinates);
-      return (0, _proj.getTransform)(sourceProj, destination)(inCoordinates, outCoordinates, stride);
-    } : (0, _proj.getTransform)(sourceProj, destination);
-    this.applyTransform(transformFn);
-    return this;
-  };
-
-  return Geometry;
-}(_Object.default);
-
-var _default = Geometry;
-exports.default = _default;
-},{"../Object.js":"../node_modules/ol/Object.js","../proj/Units.js":"../node_modules/ol/proj/Units.js","../util.js":"../node_modules/ol/util.js","../transform.js":"../node_modules/ol/transform.js","../extent.js":"../node_modules/ol/extent.js","../proj.js":"../node_modules/ol/proj.js","../functions.js":"../node_modules/ol/functions.js","./flat/transform.js":"../node_modules/ol/geom/flat/transform.js"}],"../node_modules/ol/geom/SimpleGeometry.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-exports.getStrideForLayout = getStrideForLayout;
-exports.transformGeom2D = transformGeom2D;
-
-var _Geometry = _interopRequireDefault(require("./Geometry.js"));
-
-var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
-
-var _util = require("../util.js");
-
-var _extent = require("../extent.js");
-
-var _transform = require("./flat/transform.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/SimpleGeometry
- */
-
-
-/**
- * @classdesc
- * Abstract base class; only used for creating subclasses; do not instantiate
- * in apps, as cannot be rendered.
- *
- * @abstract
- * @api
- */
-var SimpleGeometry =
-/** @class */
-function (_super) {
-  __extends(SimpleGeometry, _super);
-
-  function SimpleGeometry() {
-    var _this = _super.call(this) || this;
-    /**
-     * @protected
-     * @type {import("./GeometryLayout.js").default}
-     */
-
-
-    _this.layout = _GeometryLayout.default.XY;
-    /**
-     * @protected
-     * @type {number}
-     */
-
-    _this.stride = 2;
-    /**
-     * @protected
-     * @type {Array<number>}
-     */
-
-    _this.flatCoordinates = null;
-    return _this;
-  }
-  /**
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @protected
-   * @return {import("../extent.js").Extent} extent Extent.
-   */
-
-
-  SimpleGeometry.prototype.computeExtent = function (extent) {
-    return (0, _extent.createOrUpdateFromFlatCoordinates)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, extent);
-  };
-  /**
-   * @abstract
-   * @return {Array<*>} Coordinates.
-   */
-
-
-  SimpleGeometry.prototype.getCoordinates = function () {
-    return (0, _util.abstract)();
-  };
-  /**
-   * Return the first coordinate of the geometry.
-   * @return {import("../coordinate.js").Coordinate} First coordinate.
-   * @api
-   */
-
-
-  SimpleGeometry.prototype.getFirstCoordinate = function () {
-    return this.flatCoordinates.slice(0, this.stride);
-  };
-  /**
-   * @return {Array<number>} Flat coordinates.
-   */
-
-
-  SimpleGeometry.prototype.getFlatCoordinates = function () {
-    return this.flatCoordinates;
-  };
-  /**
-   * Return the last coordinate of the geometry.
-   * @return {import("../coordinate.js").Coordinate} Last point.
-   * @api
-   */
-
-
-  SimpleGeometry.prototype.getLastCoordinate = function () {
-    return this.flatCoordinates.slice(this.flatCoordinates.length - this.stride);
-  };
-  /**
-   * Return the {@link module:ol/geom/GeometryLayout layout} of the geometry.
-   * @return {import("./GeometryLayout.js").default} Layout.
-   * @api
-   */
-
-
-  SimpleGeometry.prototype.getLayout = function () {
-    return this.layout;
-  };
-  /**
-   * Create a simplified version of this geometry using the Douglas Peucker algorithm.
-   * @param {number} squaredTolerance Squared tolerance.
-   * @return {SimpleGeometry} Simplified geometry.
-   */
-
-
-  SimpleGeometry.prototype.getSimplifiedGeometry = function (squaredTolerance) {
-    if (this.simplifiedGeometryRevision !== this.getRevision()) {
-      this.simplifiedGeometryMaxMinSquaredTolerance = 0;
-      this.simplifiedGeometryRevision = this.getRevision();
-    } // If squaredTolerance is negative or if we know that simplification will not
-    // have any effect then just return this.
-
-
-    if (squaredTolerance < 0 || this.simplifiedGeometryMaxMinSquaredTolerance !== 0 && squaredTolerance <= this.simplifiedGeometryMaxMinSquaredTolerance) {
-      return this;
-    }
-
-    var simplifiedGeometry = this.getSimplifiedGeometryInternal(squaredTolerance);
-    var simplifiedFlatCoordinates = simplifiedGeometry.getFlatCoordinates();
-
-    if (simplifiedFlatCoordinates.length < this.flatCoordinates.length) {
-      return simplifiedGeometry;
-    } else {
-      // Simplification did not actually remove any coordinates.  We now know
-      // that any calls to getSimplifiedGeometry with a squaredTolerance less
-      // than or equal to the current squaredTolerance will also not have any
-      // effect.  This allows us to short circuit simplification (saving CPU
-      // cycles) and prevents the cache of simplified geometries from filling
-      // up with useless identical copies of this geometry (saving memory).
-      this.simplifiedGeometryMaxMinSquaredTolerance = squaredTolerance;
-      return this;
-    }
-  };
-  /**
-   * @param {number} squaredTolerance Squared tolerance.
-   * @return {SimpleGeometry} Simplified geometry.
-   * @protected
-   */
-
-
-  SimpleGeometry.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
-    return this;
-  };
-  /**
-   * @return {number} Stride.
-   */
-
-
-  SimpleGeometry.prototype.getStride = function () {
-    return this.stride;
-  };
-  /**
-   * @param {import("./GeometryLayout.js").default} layout Layout.
-   * @param {Array<number>} flatCoordinates Flat coordinates.
-   */
-
-
-  SimpleGeometry.prototype.setFlatCoordinates = function (layout, flatCoordinates) {
-    this.stride = getStrideForLayout(layout);
-    this.layout = layout;
-    this.flatCoordinates = flatCoordinates;
-  };
-  /**
-   * @abstract
-   * @param {!Array<*>} coordinates Coordinates.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   */
-
-
-  SimpleGeometry.prototype.setCoordinates = function (coordinates, opt_layout) {
-    (0, _util.abstract)();
-  };
-  /**
-   * @param {import("./GeometryLayout.js").default|undefined} layout Layout.
-   * @param {Array<*>} coordinates Coordinates.
-   * @param {number} nesting Nesting.
-   * @protected
-   */
-
-
-  SimpleGeometry.prototype.setLayout = function (layout, coordinates, nesting) {
-    /** @type {number} */
-    var stride;
-
-    if (layout) {
-      stride = getStrideForLayout(layout);
-    } else {
-      for (var i = 0; i < nesting; ++i) {
-        if (coordinates.length === 0) {
-          this.layout = _GeometryLayout.default.XY;
-          this.stride = 2;
-          return;
-        } else {
-          coordinates =
-          /** @type {Array} */
-          coordinates[0];
-        }
-      }
-
-      stride = coordinates.length;
-      layout = getLayoutForStride(stride);
-    }
-
-    this.layout = layout;
-    this.stride = stride;
-  };
-  /**
-   * Apply a transform function to the coordinates of the geometry.
-   * The geometry is modified in place.
-   * If you do not want the geometry modified in place, first `clone()` it and
-   * then use this function on the clone.
-   * @param {import("../proj.js").TransformFunction} transformFn Transform function.
-   * Called with a flat array of geometry coordinates.
-   * @api
-   */
-
-
-  SimpleGeometry.prototype.applyTransform = function (transformFn) {
-    if (this.flatCoordinates) {
-      transformFn(this.flatCoordinates, this.flatCoordinates, this.stride);
-      this.changed();
-    }
-  };
-  /**
-   * Rotate the geometry around a given coordinate. This modifies the geometry
-   * coordinates in place.
-   * @param {number} angle Rotation angle in counter-clockwise radians.
-   * @param {import("../coordinate.js").Coordinate} anchor The rotation center.
-   * @api
-   */
-
-
-  SimpleGeometry.prototype.rotate = function (angle, anchor) {
-    var flatCoordinates = this.getFlatCoordinates();
-
-    if (flatCoordinates) {
-      var stride = this.getStride();
-      (0, _transform.rotate)(flatCoordinates, 0, flatCoordinates.length, stride, angle, anchor, flatCoordinates);
-      this.changed();
-    }
-  };
-  /**
-   * Scale the geometry (with an optional origin).  This modifies the geometry
-   * coordinates in place.
-   * @param {number} sx The scaling factor in the x-direction.
-   * @param {number} [opt_sy] The scaling factor in the y-direction (defaults to sx).
-   * @param {import("../coordinate.js").Coordinate} [opt_anchor] The scale origin (defaults to the center
-   *     of the geometry extent).
-   * @api
-   */
-
-
-  SimpleGeometry.prototype.scale = function (sx, opt_sy, opt_anchor) {
-    var sy = opt_sy;
-
-    if (sy === undefined) {
-      sy = sx;
-    }
-
-    var anchor = opt_anchor;
-
-    if (!anchor) {
-      anchor = (0, _extent.getCenter)(this.getExtent());
-    }
-
-    var flatCoordinates = this.getFlatCoordinates();
-
-    if (flatCoordinates) {
-      var stride = this.getStride();
-      (0, _transform.scale)(flatCoordinates, 0, flatCoordinates.length, stride, sx, sy, anchor, flatCoordinates);
-      this.changed();
-    }
-  };
-  /**
-   * Translate the geometry.  This modifies the geometry coordinates in place.  If
-   * instead you want a new geometry, first `clone()` this geometry.
-   * @param {number} deltaX Delta X.
-   * @param {number} deltaY Delta Y.
-   * @api
-   */
-
-
-  SimpleGeometry.prototype.translate = function (deltaX, deltaY) {
-    var flatCoordinates = this.getFlatCoordinates();
-
-    if (flatCoordinates) {
-      var stride = this.getStride();
-      (0, _transform.translate)(flatCoordinates, 0, flatCoordinates.length, stride, deltaX, deltaY, flatCoordinates);
-      this.changed();
-    }
-  };
-
-  return SimpleGeometry;
-}(_Geometry.default);
-/**
- * @param {number} stride Stride.
- * @return {import("./GeometryLayout.js").default} layout Layout.
- */
-
-
-function getLayoutForStride(stride) {
-  var layout;
-
-  if (stride == 2) {
-    layout = _GeometryLayout.default.XY;
-  } else if (stride == 3) {
-    layout = _GeometryLayout.default.XYZ;
-  } else if (stride == 4) {
-    layout = _GeometryLayout.default.XYZM;
-  }
-
-  return (
-    /** @type {import("./GeometryLayout.js").default} */
-    layout
-  );
-}
-/**
- * @param {import("./GeometryLayout.js").default} layout Layout.
- * @return {number} Stride.
- */
-
-
-function getStrideForLayout(layout) {
-  var stride;
-
-  if (layout == _GeometryLayout.default.XY) {
-    stride = 2;
-  } else if (layout == _GeometryLayout.default.XYZ || layout == _GeometryLayout.default.XYM) {
-    stride = 3;
-  } else if (layout == _GeometryLayout.default.XYZM) {
-    stride = 4;
-  }
-
-  return (
-    /** @type {number} */
-    stride
-  );
-}
-/**
- * @param {SimpleGeometry} simpleGeometry Simple geometry.
- * @param {import("../transform.js").Transform} transform Transform.
- * @param {Array<number>} [opt_dest] Destination.
- * @return {Array<number>} Transformed flat coordinates.
- */
-
-
-function transformGeom2D(simpleGeometry, transform, opt_dest) {
-  var flatCoordinates = simpleGeometry.getFlatCoordinates();
-
-  if (!flatCoordinates) {
-    return null;
-  } else {
-    var stride = simpleGeometry.getStride();
-    return (0, _transform.transform2D)(flatCoordinates, 0, flatCoordinates.length, stride, transform, opt_dest);
-  }
-}
-
-var _default = SimpleGeometry;
-exports.default = _default;
-},{"./Geometry.js":"../node_modules/ol/geom/Geometry.js","./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","../util.js":"../node_modules/ol/util.js","../extent.js":"../node_modules/ol/extent.js","./flat/transform.js":"../node_modules/ol/geom/flat/transform.js"}],"../node_modules/ol/geom/flat/closest.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.arrayMaxSquaredDelta = arrayMaxSquaredDelta;
-exports.assignClosestArrayPoint = assignClosestArrayPoint;
-exports.assignClosestMultiArrayPoint = assignClosestMultiArrayPoint;
-exports.assignClosestPoint = assignClosestPoint;
-exports.maxSquaredDelta = maxSquaredDelta;
-exports.multiArrayMaxSquaredDelta = multiArrayMaxSquaredDelta;
-
-var _math = require("../../math.js");
-
-/**
- * @module ol/geom/flat/closest
- */
-
-/**
- * Returns the point on the 2D line segment flatCoordinates[offset1] to
- * flatCoordinates[offset2] that is closest to the point (x, y).  Extra
- * dimensions are linearly interpolated.
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset1 Offset 1.
- * @param {number} offset2 Offset 2.
- * @param {number} stride Stride.
- * @param {number} x X.
- * @param {number} y Y.
- * @param {Array<number>} closestPoint Closest point.
- */
-function assignClosest(flatCoordinates, offset1, offset2, stride, x, y, closestPoint) {
-  var x1 = flatCoordinates[offset1];
-  var y1 = flatCoordinates[offset1 + 1];
-  var dx = flatCoordinates[offset2] - x1;
-  var dy = flatCoordinates[offset2 + 1] - y1;
-  var offset;
-
-  if (dx === 0 && dy === 0) {
-    offset = offset1;
-  } else {
-    var t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
-
-    if (t > 1) {
-      offset = offset2;
-    } else if (t > 0) {
-      for (var i = 0; i < stride; ++i) {
-        closestPoint[i] = (0, _math.lerp)(flatCoordinates[offset1 + i], flatCoordinates[offset2 + i], t);
-      }
-
-      closestPoint.length = stride;
-      return;
-    } else {
-      offset = offset1;
-    }
-  }
-
-  for (var i = 0; i < stride; ++i) {
-    closestPoint[i] = flatCoordinates[offset + i];
-  }
-
-  closestPoint.length = stride;
-}
-/**
- * Return the squared of the largest distance between any pair of consecutive
- * coordinates.
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} max Max squared delta.
- * @return {number} Max squared delta.
- */
-
-
-function maxSquaredDelta(flatCoordinates, offset, end, stride, max) {
-  var x1 = flatCoordinates[offset];
-  var y1 = flatCoordinates[offset + 1];
-
-  for (offset += stride; offset < end; offset += stride) {
-    var x2 = flatCoordinates[offset];
-    var y2 = flatCoordinates[offset + 1];
-    var squaredDelta = (0, _math.squaredDistance)(x1, y1, x2, y2);
-
-    if (squaredDelta > max) {
-      max = squaredDelta;
-    }
-
-    x1 = x2;
-    y1 = y2;
-  }
-
-  return max;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {number} max Max squared delta.
- * @return {number} Max squared delta.
- */
-
-
-function arrayMaxSquaredDelta(flatCoordinates, offset, ends, stride, max) {
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    var end = ends[i];
-    max = maxSquaredDelta(flatCoordinates, offset, end, stride, max);
-    offset = end;
-  }
-
-  return max;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @param {number} max Max squared delta.
- * @return {number} Max squared delta.
- */
-
-
-function multiArrayMaxSquaredDelta(flatCoordinates, offset, endss, stride, max) {
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-    max = arrayMaxSquaredDelta(flatCoordinates, offset, ends, stride, max);
-    offset = ends[ends.length - 1];
-  }
-
-  return max;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} maxDelta Max delta.
- * @param {boolean} isRing Is ring.
- * @param {number} x X.
- * @param {number} y Y.
- * @param {Array<number>} closestPoint Closest point.
- * @param {number} minSquaredDistance Minimum squared distance.
- * @param {Array<number>} [opt_tmpPoint] Temporary point object.
- * @return {number} Minimum squared distance.
- */
-
-
-function assignClosestPoint(flatCoordinates, offset, end, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, opt_tmpPoint) {
-  if (offset == end) {
-    return minSquaredDistance;
-  }
-
-  var i, squaredDistance;
-
-  if (maxDelta === 0) {
-    // All points are identical, so just test the first point.
-    squaredDistance = (0, _math.squaredDistance)(x, y, flatCoordinates[offset], flatCoordinates[offset + 1]);
-
-    if (squaredDistance < minSquaredDistance) {
-      for (i = 0; i < stride; ++i) {
-        closestPoint[i] = flatCoordinates[offset + i];
-      }
-
-      closestPoint.length = stride;
-      return squaredDistance;
-    } else {
-      return minSquaredDistance;
-    }
-  }
-
-  var tmpPoint = opt_tmpPoint ? opt_tmpPoint : [NaN, NaN];
-  var index = offset + stride;
-
-  while (index < end) {
-    assignClosest(flatCoordinates, index - stride, index, stride, x, y, tmpPoint);
-    squaredDistance = (0, _math.squaredDistance)(x, y, tmpPoint[0], tmpPoint[1]);
-
-    if (squaredDistance < minSquaredDistance) {
-      minSquaredDistance = squaredDistance;
-
-      for (i = 0; i < stride; ++i) {
-        closestPoint[i] = tmpPoint[i];
-      }
-
-      closestPoint.length = stride;
-      index += stride;
-    } else {
-      // Skip ahead multiple points, because we know that all the skipped
-      // points cannot be any closer than the closest point we have found so
-      // far.  We know this because we know how close the current point is, how
-      // close the closest point we have found so far is, and the maximum
-      // distance between consecutive points.  For example, if we're currently
-      // at distance 10, the best we've found so far is 3, and that the maximum
-      // distance between consecutive points is 2, then we'll need to skip at
-      // least (10 - 3) / 2 == 3 (rounded down) points to have any chance of
-      // finding a closer point.  We use Math.max(..., 1) to ensure that we
-      // always advance at least one point, to avoid an infinite loop.
-      index += stride * Math.max((Math.sqrt(squaredDistance) - Math.sqrt(minSquaredDistance)) / maxDelta | 0, 1);
-    }
-  }
-
-  if (isRing) {
-    // Check the closing segment.
-    assignClosest(flatCoordinates, end - stride, offset, stride, x, y, tmpPoint);
-    squaredDistance = (0, _math.squaredDistance)(x, y, tmpPoint[0], tmpPoint[1]);
-
-    if (squaredDistance < minSquaredDistance) {
-      minSquaredDistance = squaredDistance;
-
-      for (i = 0; i < stride; ++i) {
-        closestPoint[i] = tmpPoint[i];
-      }
-
-      closestPoint.length = stride;
-    }
-  }
-
-  return minSquaredDistance;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {number} maxDelta Max delta.
- * @param {boolean} isRing Is ring.
- * @param {number} x X.
- * @param {number} y Y.
- * @param {Array<number>} closestPoint Closest point.
- * @param {number} minSquaredDistance Minimum squared distance.
- * @param {Array<number>} [opt_tmpPoint] Temporary point object.
- * @return {number} Minimum squared distance.
- */
-
-
-function assignClosestArrayPoint(flatCoordinates, offset, ends, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, opt_tmpPoint) {
-  var tmpPoint = opt_tmpPoint ? opt_tmpPoint : [NaN, NaN];
-
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    var end = ends[i];
-    minSquaredDistance = assignClosestPoint(flatCoordinates, offset, end, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, tmpPoint);
-    offset = end;
-  }
-
-  return minSquaredDistance;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @param {number} maxDelta Max delta.
- * @param {boolean} isRing Is ring.
- * @param {number} x X.
- * @param {number} y Y.
- * @param {Array<number>} closestPoint Closest point.
- * @param {number} minSquaredDistance Minimum squared distance.
- * @param {Array<number>} [opt_tmpPoint] Temporary point object.
- * @return {number} Minimum squared distance.
- */
-
-
-function assignClosestMultiArrayPoint(flatCoordinates, offset, endss, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, opt_tmpPoint) {
-  var tmpPoint = opt_tmpPoint ? opt_tmpPoint : [NaN, NaN];
-
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-    minSquaredDistance = assignClosestArrayPoint(flatCoordinates, offset, ends, stride, maxDelta, isRing, x, y, closestPoint, minSquaredDistance, tmpPoint);
-    offset = ends[ends.length - 1];
-  }
-
-  return minSquaredDistance;
-}
-},{"../../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/deflate.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.deflateCoordinate = deflateCoordinate;
-exports.deflateCoordinates = deflateCoordinates;
-exports.deflateCoordinatesArray = deflateCoordinatesArray;
-exports.deflateMultiCoordinatesArray = deflateMultiCoordinatesArray;
-
-/**
- * @module ol/geom/flat/deflate
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {import("../../coordinate.js").Coordinate} coordinate Coordinate.
- * @param {number} stride Stride.
- * @return {number} offset Offset.
- */
-function deflateCoordinate(flatCoordinates, offset, coordinate, stride) {
-  for (var i = 0, ii = coordinate.length; i < ii; ++i) {
-    flatCoordinates[offset++] = coordinate[i];
-  }
-
-  return offset;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<import("../../coordinate.js").Coordinate>} coordinates Coordinates.
- * @param {number} stride Stride.
- * @return {number} offset Offset.
- */
-
-
-function deflateCoordinates(flatCoordinates, offset, coordinates, stride) {
-  for (var i = 0, ii = coordinates.length; i < ii; ++i) {
-    var coordinate = coordinates[i];
-
-    for (var j = 0; j < stride; ++j) {
-      flatCoordinates[offset++] = coordinate[j];
-    }
-  }
-
-  return offset;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<import("../../coordinate.js").Coordinate>>} coordinatess Coordinatess.
- * @param {number} stride Stride.
- * @param {Array<number>} [opt_ends] Ends.
- * @return {Array<number>} Ends.
- */
-
-
-function deflateCoordinatesArray(flatCoordinates, offset, coordinatess, stride, opt_ends) {
-  var ends = opt_ends ? opt_ends : [];
-  var i = 0;
-
-  for (var j = 0, jj = coordinatess.length; j < jj; ++j) {
-    var end = deflateCoordinates(flatCoordinates, offset, coordinatess[j], stride);
-    ends[i++] = end;
-    offset = end;
-  }
-
-  ends.length = i;
-  return ends;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<Array<import("../../coordinate.js").Coordinate>>>} coordinatesss Coordinatesss.
- * @param {number} stride Stride.
- * @param {Array<Array<number>>} [opt_endss] Endss.
- * @return {Array<Array<number>>} Endss.
- */
-
-
-function deflateMultiCoordinatesArray(flatCoordinates, offset, coordinatesss, stride, opt_endss) {
-  var endss = opt_endss ? opt_endss : [];
-  var i = 0;
-
-  for (var j = 0, jj = coordinatesss.length; j < jj; ++j) {
-    var ends = deflateCoordinatesArray(flatCoordinates, offset, coordinatesss[j], stride, endss[i]);
-    endss[i++] = ends;
-    offset = ends[ends.length - 1];
-  }
-
-  endss.length = i;
-  return endss;
-}
-},{}],"../node_modules/ol/geom/flat/simplify.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.douglasPeucker = douglasPeucker;
-exports.douglasPeuckerArray = douglasPeuckerArray;
-exports.douglasPeuckerMultiArray = douglasPeuckerMultiArray;
-exports.quantize = quantize;
-exports.quantizeArray = quantizeArray;
-exports.quantizeMultiArray = quantizeMultiArray;
-exports.radialDistance = radialDistance;
-exports.simplifyLineString = simplifyLineString;
-exports.snap = snap;
-
-var _math = require("../../math.js");
-
-/**
- * @module ol/geom/flat/simplify
- */
-// Based on simplify-js https://github.com/mourner/simplify-js
-// Copyright (c) 2012, Vladimir Agafonkin
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-//    1. Redistributions of source code must retain the above copyright notice,
-//       this list of conditions and the following disclaimer.
-//
-//    2. Redistributions in binary form must reproduce the above copyright
-//       notice, this list of conditions and the following disclaimer in the
-//       documentation and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} squaredTolerance Squared tolerance.
- * @param {boolean} highQuality Highest quality.
- * @param {Array<number>} [opt_simplifiedFlatCoordinates] Simplified flat
- *     coordinates.
- * @return {Array<number>} Simplified line string.
- */
-function simplifyLineString(flatCoordinates, offset, end, stride, squaredTolerance, highQuality, opt_simplifiedFlatCoordinates) {
-  var simplifiedFlatCoordinates = opt_simplifiedFlatCoordinates !== undefined ? opt_simplifiedFlatCoordinates : [];
-
-  if (!highQuality) {
-    end = radialDistance(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, 0);
-    flatCoordinates = simplifiedFlatCoordinates;
-    offset = 0;
-    stride = 2;
-  }
-
-  simplifiedFlatCoordinates.length = douglasPeucker(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, 0);
-  return simplifiedFlatCoordinates;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} squaredTolerance Squared tolerance.
- * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
- *     coordinates.
- * @param {number} simplifiedOffset Simplified offset.
- * @return {number} Simplified offset.
- */
-
-
-function douglasPeucker(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset) {
-  var n = (end - offset) / stride;
-
-  if (n < 3) {
-    for (; offset < end; offset += stride) {
-      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset];
-      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset + 1];
-    }
-
-    return simplifiedOffset;
-  }
-  /** @type {Array<number>} */
-
-
-  var markers = new Array(n);
-  markers[0] = 1;
-  markers[n - 1] = 1;
-  /** @type {Array<number>} */
-
-  var stack = [offset, end - stride];
-  var index = 0;
-
-  while (stack.length > 0) {
-    var last = stack.pop();
-    var first = stack.pop();
-    var maxSquaredDistance = 0;
-    var x1 = flatCoordinates[first];
-    var y1 = flatCoordinates[first + 1];
-    var x2 = flatCoordinates[last];
-    var y2 = flatCoordinates[last + 1];
-
-    for (var i = first + stride; i < last; i += stride) {
-      var x = flatCoordinates[i];
-      var y = flatCoordinates[i + 1];
-      var squaredDistance_1 = (0, _math.squaredSegmentDistance)(x, y, x1, y1, x2, y2);
-
-      if (squaredDistance_1 > maxSquaredDistance) {
-        index = i;
-        maxSquaredDistance = squaredDistance_1;
-      }
-    }
-
-    if (maxSquaredDistance > squaredTolerance) {
-      markers[(index - offset) / stride] = 1;
-
-      if (first + stride < index) {
-        stack.push(first, index);
-      }
-
-      if (index + stride < last) {
-        stack.push(index, last);
-      }
-    }
-  }
-
-  for (var i = 0; i < n; ++i) {
-    if (markers[i]) {
-      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset + i * stride];
-      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset + i * stride + 1];
-    }
-  }
-
-  return simplifiedOffset;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {number} squaredTolerance Squared tolerance.
- * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
- *     coordinates.
- * @param {number} simplifiedOffset Simplified offset.
- * @param {Array<number>} simplifiedEnds Simplified ends.
- * @return {number} Simplified offset.
- */
-
-
-function douglasPeuckerArray(flatCoordinates, offset, ends, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEnds) {
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    var end = ends[i];
-    simplifiedOffset = douglasPeucker(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset);
-    simplifiedEnds.push(simplifiedOffset);
-    offset = end;
-  }
-
-  return simplifiedOffset;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @param {number} squaredTolerance Squared tolerance.
- * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
- *     coordinates.
- * @param {number} simplifiedOffset Simplified offset.
- * @param {Array<Array<number>>} simplifiedEndss Simplified endss.
- * @return {number} Simplified offset.
- */
-
-
-function douglasPeuckerMultiArray(flatCoordinates, offset, endss, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEndss) {
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-    var simplifiedEnds = [];
-    simplifiedOffset = douglasPeuckerArray(flatCoordinates, offset, ends, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEnds);
-    simplifiedEndss.push(simplifiedEnds);
-    offset = ends[ends.length - 1];
-  }
-
-  return simplifiedOffset;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} squaredTolerance Squared tolerance.
- * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
- *     coordinates.
- * @param {number} simplifiedOffset Simplified offset.
- * @return {number} Simplified offset.
- */
-
-
-function radialDistance(flatCoordinates, offset, end, stride, squaredTolerance, simplifiedFlatCoordinates, simplifiedOffset) {
-  if (end <= offset + stride) {
-    // zero or one point, no simplification possible, so copy and return
-    for (; offset < end; offset += stride) {
-      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset];
-      simplifiedFlatCoordinates[simplifiedOffset++] = flatCoordinates[offset + 1];
-    }
-
-    return simplifiedOffset;
-  }
-
-  var x1 = flatCoordinates[offset];
-  var y1 = flatCoordinates[offset + 1]; // copy first point
-
-  simplifiedFlatCoordinates[simplifiedOffset++] = x1;
-  simplifiedFlatCoordinates[simplifiedOffset++] = y1;
-  var x2 = x1;
-  var y2 = y1;
-
-  for (offset += stride; offset < end; offset += stride) {
-    x2 = flatCoordinates[offset];
-    y2 = flatCoordinates[offset + 1];
-
-    if ((0, _math.squaredDistance)(x1, y1, x2, y2) > squaredTolerance) {
-      // copy point at offset
-      simplifiedFlatCoordinates[simplifiedOffset++] = x2;
-      simplifiedFlatCoordinates[simplifiedOffset++] = y2;
-      x1 = x2;
-      y1 = y2;
-    }
-  }
-
-  if (x2 != x1 || y2 != y1) {
-    // copy last point
-    simplifiedFlatCoordinates[simplifiedOffset++] = x2;
-    simplifiedFlatCoordinates[simplifiedOffset++] = y2;
-  }
-
-  return simplifiedOffset;
-}
-/**
- * @param {number} value Value.
- * @param {number} tolerance Tolerance.
- * @return {number} Rounded value.
- */
-
-
-function snap(value, tolerance) {
-  return tolerance * Math.round(value / tolerance);
-}
-/**
- * Simplifies a line string using an algorithm designed by Tim Schaub.
- * Coordinates are snapped to the nearest value in a virtual grid and
- * consecutive duplicate coordinates are discarded.  This effectively preserves
- * topology as the simplification of any subsection of a line string is
- * independent of the rest of the line string.  This means that, for examples,
- * the common edge between two polygons will be simplified to the same line
- * string independently in both polygons.  This implementation uses a single
- * pass over the coordinates and eliminates intermediate collinear points.
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} tolerance Tolerance.
- * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
- *     coordinates.
- * @param {number} simplifiedOffset Simplified offset.
- * @return {number} Simplified offset.
- */
-
-
-function quantize(flatCoordinates, offset, end, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset) {
-  // do nothing if the line is empty
-  if (offset == end) {
-    return simplifiedOffset;
-  } // snap the first coordinate (P1)
-
-
-  var x1 = snap(flatCoordinates[offset], tolerance);
-  var y1 = snap(flatCoordinates[offset + 1], tolerance);
-  offset += stride; // add the first coordinate to the output
-
-  simplifiedFlatCoordinates[simplifiedOffset++] = x1;
-  simplifiedFlatCoordinates[simplifiedOffset++] = y1; // find the next coordinate that does not snap to the same value as the first
-  // coordinate (P2)
-
-  var x2, y2;
-
-  do {
-    x2 = snap(flatCoordinates[offset], tolerance);
-    y2 = snap(flatCoordinates[offset + 1], tolerance);
-    offset += stride;
-
-    if (offset == end) {
-      // all coordinates snap to the same value, the line collapses to a point
-      // push the last snapped value anyway to ensure that the output contains
-      // at least two points
-      // FIXME should we really return at least two points anyway?
-      simplifiedFlatCoordinates[simplifiedOffset++] = x2;
-      simplifiedFlatCoordinates[simplifiedOffset++] = y2;
-      return simplifiedOffset;
-    }
-  } while (x2 == x1 && y2 == y1);
-
-  while (offset < end) {
-    // snap the next coordinate (P3)
-    var x3 = snap(flatCoordinates[offset], tolerance);
-    var y3 = snap(flatCoordinates[offset + 1], tolerance);
-    offset += stride; // skip P3 if it is equal to P2
-
-    if (x3 == x2 && y3 == y2) {
-      continue;
-    } // calculate the delta between P1 and P2
-
-
-    var dx1 = x2 - x1;
-    var dy1 = y2 - y1; // calculate the delta between P3 and P1
-
-    var dx2 = x3 - x1;
-    var dy2 = y3 - y1; // if P1, P2, and P3 are colinear and P3 is further from P1 than P2 is from
-    // P1 in the same direction then P2 is on the straight line between P1 and
-    // P3
-
-    if (dx1 * dy2 == dy1 * dx2 && (dx1 < 0 && dx2 < dx1 || dx1 == dx2 || dx1 > 0 && dx2 > dx1) && (dy1 < 0 && dy2 < dy1 || dy1 == dy2 || dy1 > 0 && dy2 > dy1)) {
-      // discard P2 and set P2 = P3
-      x2 = x3;
-      y2 = y3;
-      continue;
-    } // either P1, P2, and P3 are not colinear, or they are colinear but P3 is
-    // between P3 and P1 or on the opposite half of the line to P2.  add P2,
-    // and continue with P1 = P2 and P2 = P3
-
-
-    simplifiedFlatCoordinates[simplifiedOffset++] = x2;
-    simplifiedFlatCoordinates[simplifiedOffset++] = y2;
-    x1 = x2;
-    y1 = y2;
-    x2 = x3;
-    y2 = y3;
-  } // add the last point (P2)
-
-
-  simplifiedFlatCoordinates[simplifiedOffset++] = x2;
-  simplifiedFlatCoordinates[simplifiedOffset++] = y2;
-  return simplifiedOffset;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {number} tolerance Tolerance.
- * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
- *     coordinates.
- * @param {number} simplifiedOffset Simplified offset.
- * @param {Array<number>} simplifiedEnds Simplified ends.
- * @return {number} Simplified offset.
- */
-
-
-function quantizeArray(flatCoordinates, offset, ends, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEnds) {
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    var end = ends[i];
-    simplifiedOffset = quantize(flatCoordinates, offset, end, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset);
-    simplifiedEnds.push(simplifiedOffset);
-    offset = end;
-  }
-
-  return simplifiedOffset;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @param {number} tolerance Tolerance.
- * @param {Array<number>} simplifiedFlatCoordinates Simplified flat
- *     coordinates.
- * @param {number} simplifiedOffset Simplified offset.
- * @param {Array<Array<number>>} simplifiedEndss Simplified endss.
- * @return {number} Simplified offset.
- */
-
-
-function quantizeMultiArray(flatCoordinates, offset, endss, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEndss) {
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-    var simplifiedEnds = [];
-    simplifiedOffset = quantizeArray(flatCoordinates, offset, ends, stride, tolerance, simplifiedFlatCoordinates, simplifiedOffset, simplifiedEnds);
-    simplifiedEndss.push(simplifiedEnds);
-    offset = ends[ends.length - 1];
-  }
-
-  return simplifiedOffset;
-}
-},{"../../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/inflate.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.inflateCoordinates = inflateCoordinates;
-exports.inflateCoordinatesArray = inflateCoordinatesArray;
-exports.inflateMultiCoordinatesArray = inflateMultiCoordinatesArray;
-
-/**
- * @module ol/geom/flat/inflate
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {Array<import("../../coordinate.js").Coordinate>} [opt_coordinates] Coordinates.
- * @return {Array<import("../../coordinate.js").Coordinate>} Coordinates.
- */
-function inflateCoordinates(flatCoordinates, offset, end, stride, opt_coordinates) {
-  var coordinates = opt_coordinates !== undefined ? opt_coordinates : [];
-  var i = 0;
-
-  for (var j = offset; j < end; j += stride) {
-    coordinates[i++] = flatCoordinates.slice(j, j + stride);
-  }
-
-  coordinates.length = i;
-  return coordinates;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {Array<Array<import("../../coordinate.js").Coordinate>>} [opt_coordinatess] Coordinatess.
- * @return {Array<Array<import("../../coordinate.js").Coordinate>>} Coordinatess.
- */
-
-
-function inflateCoordinatesArray(flatCoordinates, offset, ends, stride, opt_coordinatess) {
-  var coordinatess = opt_coordinatess !== undefined ? opt_coordinatess : [];
-  var i = 0;
-
-  for (var j = 0, jj = ends.length; j < jj; ++j) {
-    var end = ends[j];
-    coordinatess[i++] = inflateCoordinates(flatCoordinates, offset, end, stride, coordinatess[i]);
-    offset = end;
-  }
-
-  coordinatess.length = i;
-  return coordinatess;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @param {Array<Array<Array<import("../../coordinate.js").Coordinate>>>} [opt_coordinatesss]
- *     Coordinatesss.
- * @return {Array<Array<Array<import("../../coordinate.js").Coordinate>>>} Coordinatesss.
- */
-
-
-function inflateMultiCoordinatesArray(flatCoordinates, offset, endss, stride, opt_coordinatesss) {
-  var coordinatesss = opt_coordinatesss !== undefined ? opt_coordinatesss : [];
-  var i = 0;
-
-  for (var j = 0, jj = endss.length; j < jj; ++j) {
-    var ends = endss[j];
-    coordinatesss[i++] = inflateCoordinatesArray(flatCoordinates, offset, ends, stride, coordinatesss[i]);
-    offset = ends[ends.length - 1];
-  }
-
-  coordinatesss.length = i;
-  return coordinatesss;
-}
-},{}],"../node_modules/ol/geom/flat/area.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.linearRing = linearRing;
-exports.linearRings = linearRings;
-exports.linearRingss = linearRingss;
-
-/**
- * @module ol/geom/flat/area
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @return {number} Area.
- */
-function linearRing(flatCoordinates, offset, end, stride) {
-  var twiceArea = 0;
-  var x1 = flatCoordinates[end - stride];
-  var y1 = flatCoordinates[end - stride + 1];
-
-  for (; offset < end; offset += stride) {
-    var x2 = flatCoordinates[offset];
-    var y2 = flatCoordinates[offset + 1];
-    twiceArea += y1 * x2 - x1 * y2;
-    x1 = x2;
-    y1 = y2;
-  }
-
-  return twiceArea / 2;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @return {number} Area.
- */
-
-
-function linearRings(flatCoordinates, offset, ends, stride) {
-  var area = 0;
-
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    var end = ends[i];
-    area += linearRing(flatCoordinates, offset, end, stride);
-    offset = end;
-  }
-
-  return area;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @return {number} Area.
- */
-
-
-function linearRingss(flatCoordinates, offset, endss, stride) {
-  var area = 0;
-
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-    area += linearRings(flatCoordinates, offset, ends, stride);
-    offset = ends[ends.length - 1];
-  }
-
-  return area;
-}
-},{}],"../node_modules/ol/geom/LinearRing.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
-
-var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
-
-var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
-
-var _closest = require("./flat/closest.js");
-
-var _extent = require("../extent.js");
-
-var _deflate = require("./flat/deflate.js");
-
-var _simplify = require("./flat/simplify.js");
-
-var _inflate = require("./flat/inflate.js");
-
-var _area = require("./flat/area.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/LinearRing
- */
-
-
-/**
- * @classdesc
- * Linear ring geometry. Only used as part of polygon; cannot be rendered
- * on its own.
- *
- * @api
- */
-var LinearRing =
-/** @class */
-function (_super) {
-  __extends(LinearRing, _super);
-  /**
-   * @param {Array<import("../coordinate.js").Coordinate>|Array<number>} coordinates Coordinates.
-   *     For internal use, flat coordinates in combination with `opt_layout` are also accepted.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   */
-
-
-  function LinearRing(coordinates, opt_layout) {
-    var _this = _super.call(this) || this;
-    /**
-     * @private
-     * @type {number}
-     */
-
-
-    _this.maxDelta_ = -1;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDeltaRevision_ = -1;
-
-    if (opt_layout !== undefined && !Array.isArray(coordinates[0])) {
-      _this.setFlatCoordinates(opt_layout,
-      /** @type {Array<number>} */
-      coordinates);
-    } else {
-      _this.setCoordinates(
-      /** @type {Array<import("../coordinate.js").Coordinate>} */
-      coordinates, opt_layout);
-    }
-
-    return _this;
-  }
-  /**
-   * Make a complete copy of the geometry.
-   * @return {!LinearRing} Clone.
-   * @api
-   */
-
-
-  LinearRing.prototype.clone = function () {
-    return new LinearRing(this.flatCoordinates.slice(), this.layout);
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
-   * @param {number} minSquaredDistance Minimum squared distance.
-   * @return {number} Minimum squared distance.
-   */
-
-
-  LinearRing.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
-    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
-      return minSquaredDistance;
-    }
-
-    if (this.maxDeltaRevision_ != this.getRevision()) {
-      this.maxDelta_ = Math.sqrt((0, _closest.maxSquaredDelta)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, 0));
-      this.maxDeltaRevision_ = this.getRevision();
-    }
-
-    return (0, _closest.assignClosestPoint)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, this.maxDelta_, true, x, y, closestPoint, minSquaredDistance);
-  };
-  /**
-   * Return the area of the linear ring on projected plane.
-   * @return {number} Area (on projected plane).
-   * @api
-   */
-
-
-  LinearRing.prototype.getArea = function () {
-    return (0, _area.linearRing)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
-  };
-  /**
-   * Return the coordinates of the linear ring.
-   * @return {Array<import("../coordinate.js").Coordinate>} Coordinates.
-   * @api
-   */
-
-
-  LinearRing.prototype.getCoordinates = function () {
-    return (0, _inflate.inflateCoordinates)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
-  };
-  /**
-   * @param {number} squaredTolerance Squared tolerance.
-   * @return {LinearRing} Simplified LinearRing.
-   * @protected
-   */
-
-
-  LinearRing.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
-    var simplifiedFlatCoordinates = [];
-    simplifiedFlatCoordinates.length = (0, _simplify.douglasPeucker)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, squaredTolerance, simplifiedFlatCoordinates, 0);
-    return new LinearRing(simplifiedFlatCoordinates, _GeometryLayout.default.XY);
-  };
-  /**
-   * Get the type of this geometry.
-   * @return {import("./GeometryType.js").default} Geometry type.
-   * @api
-   */
-
-
-  LinearRing.prototype.getType = function () {
-    return _GeometryType.default.LINEAR_RING;
-  };
-  /**
-   * Test if the geometry and the passed extent intersect.
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @return {boolean} `true` if the geometry and the extent intersect.
-   * @api
-   */
-
-
-  LinearRing.prototype.intersectsExtent = function (extent) {
-    return false;
-  };
-  /**
-   * Set the coordinates of the linear ring.
-   * @param {!Array<import("../coordinate.js").Coordinate>} coordinates Coordinates.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @api
-   */
-
-
-  LinearRing.prototype.setCoordinates = function (coordinates, opt_layout) {
-    this.setLayout(opt_layout, coordinates, 1);
-
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = [];
-    }
-
-    this.flatCoordinates.length = (0, _deflate.deflateCoordinates)(this.flatCoordinates, 0, coordinates, this.stride);
-    this.changed();
-  };
-
-  return LinearRing;
-}(_SimpleGeometry.default);
-
-var _default = LinearRing;
-exports.default = _default;
-},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/area.js":"../node_modules/ol/geom/flat/area.js"}],"../node_modules/ol/geom/Point.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
-
-var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
-
-var _extent = require("../extent.js");
-
-var _deflate = require("./flat/deflate.js");
-
-var _math = require("../math.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/Point
- */
-
-
-/**
- * @classdesc
- * Point geometry.
- *
- * @api
- */
-var Point =
-/** @class */
-function (_super) {
-  __extends(Point, _super);
-  /**
-   * @param {import("../coordinate.js").Coordinate} coordinates Coordinates.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   */
-
-
-  function Point(coordinates, opt_layout) {
-    var _this = _super.call(this) || this;
-
-    _this.setCoordinates(coordinates, opt_layout);
-
-    return _this;
-  }
-  /**
-   * Make a complete copy of the geometry.
-   * @return {!Point} Clone.
-   * @api
-   */
-
-
-  Point.prototype.clone = function () {
-    var point = new Point(this.flatCoordinates.slice(), this.layout);
-    point.applyProperties(this);
-    return point;
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
-   * @param {number} minSquaredDistance Minimum squared distance.
-   * @return {number} Minimum squared distance.
-   */
-
-
-  Point.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
-    var flatCoordinates = this.flatCoordinates;
-    var squaredDistance = (0, _math.squaredDistance)(x, y, flatCoordinates[0], flatCoordinates[1]);
-
-    if (squaredDistance < minSquaredDistance) {
-      var stride = this.stride;
-
-      for (var i = 0; i < stride; ++i) {
-        closestPoint[i] = flatCoordinates[i];
-      }
-
-      closestPoint.length = stride;
-      return squaredDistance;
-    } else {
-      return minSquaredDistance;
-    }
-  };
-  /**
-   * Return the coordinate of the point.
-   * @return {import("../coordinate.js").Coordinate} Coordinates.
-   * @api
-   */
-
-
-  Point.prototype.getCoordinates = function () {
-    return !this.flatCoordinates ? [] : this.flatCoordinates.slice();
-  };
-  /**
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @protected
-   * @return {import("../extent.js").Extent} extent Extent.
-   */
-
-
-  Point.prototype.computeExtent = function (extent) {
-    return (0, _extent.createOrUpdateFromCoordinate)(this.flatCoordinates, extent);
-  };
-  /**
-   * Get the type of this geometry.
-   * @return {import("./GeometryType.js").default} Geometry type.
-   * @api
-   */
-
-
-  Point.prototype.getType = function () {
-    return _GeometryType.default.POINT;
-  };
-  /**
-   * Test if the geometry and the passed extent intersect.
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @return {boolean} `true` if the geometry and the extent intersect.
-   * @api
-   */
-
-
-  Point.prototype.intersectsExtent = function (extent) {
-    return (0, _extent.containsXY)(extent, this.flatCoordinates[0], this.flatCoordinates[1]);
-  };
-  /**
-   * @param {!Array<*>} coordinates Coordinates.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @api
-   */
-
-
-  Point.prototype.setCoordinates = function (coordinates, opt_layout) {
-    this.setLayout(opt_layout, coordinates, 0);
-
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = [];
-    }
-
-    this.flatCoordinates.length = (0, _deflate.deflateCoordinate)(this.flatCoordinates, 0, coordinates, this.stride);
-    this.changed();
-  };
-
-  return Point;
-}(_SimpleGeometry.default);
-
-var _default = Point;
-exports.default = _default;
-},{"./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/contains.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.linearRingContainsExtent = linearRingContainsExtent;
-exports.linearRingContainsXY = linearRingContainsXY;
-exports.linearRingsContainsXY = linearRingsContainsXY;
-exports.linearRingssContainsXY = linearRingssContainsXY;
-
-var _extent = require("../../extent.js");
-
-/**
- * @module ol/geom/flat/contains
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {import("../../extent.js").Extent} extent Extent.
- * @return {boolean} Contains extent.
- */
-function linearRingContainsExtent(flatCoordinates, offset, end, stride, extent) {
-  var outside = (0, _extent.forEachCorner)(extent,
-  /**
-   * @param {import("../../coordinate.js").Coordinate} coordinate Coordinate.
-   * @return {boolean} Contains (x, y).
-   */
-  function (coordinate) {
-    return !linearRingContainsXY(flatCoordinates, offset, end, stride, coordinate[0], coordinate[1]);
-  });
-  return !outside;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} x X.
- * @param {number} y Y.
- * @return {boolean} Contains (x, y).
- */
-
-
-function linearRingContainsXY(flatCoordinates, offset, end, stride, x, y) {
-  // https://geomalgorithms.com/a03-_inclusion.html
-  // Copyright 2000 softSurfer, 2012 Dan Sunday
-  // This code may be freely used and modified for any purpose
-  // providing that this copyright notice is included with it.
-  // SoftSurfer makes no warranty for this code, and cannot be held
-  // liable for any real or imagined damage resulting from its use.
-  // Users of this code must verify correctness for their application.
-  var wn = 0;
-  var x1 = flatCoordinates[end - stride];
-  var y1 = flatCoordinates[end - stride + 1];
-
-  for (; offset < end; offset += stride) {
-    var x2 = flatCoordinates[offset];
-    var y2 = flatCoordinates[offset + 1];
-
-    if (y1 <= y) {
-      if (y2 > y && (x2 - x1) * (y - y1) - (x - x1) * (y2 - y1) > 0) {
-        wn++;
-      }
-    } else if (y2 <= y && (x2 - x1) * (y - y1) - (x - x1) * (y2 - y1) < 0) {
-      wn--;
-    }
-
-    x1 = x2;
-    y1 = y2;
-  }
-
-  return wn !== 0;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {number} x X.
- * @param {number} y Y.
- * @return {boolean} Contains (x, y).
- */
-
-
-function linearRingsContainsXY(flatCoordinates, offset, ends, stride, x, y) {
-  if (ends.length === 0) {
-    return false;
-  }
-
-  if (!linearRingContainsXY(flatCoordinates, offset, ends[0], stride, x, y)) {
-    return false;
-  }
-
-  for (var i = 1, ii = ends.length; i < ii; ++i) {
-    if (linearRingContainsXY(flatCoordinates, ends[i - 1], ends[i], stride, x, y)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @param {number} x X.
- * @param {number} y Y.
- * @return {boolean} Contains (x, y).
- */
-
-
-function linearRingssContainsXY(flatCoordinates, offset, endss, stride, x, y) {
-  if (endss.length === 0) {
-    return false;
-  }
-
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-
-    if (linearRingsContainsXY(flatCoordinates, offset, ends, stride, x, y)) {
-      return true;
-    }
-
-    offset = ends[ends.length - 1];
-  }
-
-  return false;
-}
-},{"../../extent.js":"../node_modules/ol/extent.js"}],"../node_modules/ol/geom/flat/interiorpoint.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.getInteriorPointOfArray = getInteriorPointOfArray;
-exports.getInteriorPointsOfMultiArray = getInteriorPointsOfMultiArray;
-
-var _contains = require("./contains.js");
-
-var _array = require("../../array.js");
-
-/**
- * @module ol/geom/flat/interiorpoint
- */
-
-/**
- * Calculates a point that is likely to lie in the interior of the linear rings.
- * Inspired by JTS's com.vividsolutions.jts.geom.Geometry#getInteriorPoint.
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {Array<number>} flatCenters Flat centers.
- * @param {number} flatCentersOffset Flat center offset.
- * @param {Array<number>} [opt_dest] Destination.
- * @return {Array<number>} Destination point as XYM coordinate, where M is the
- * length of the horizontal intersection that the point belongs to.
- */
-function getInteriorPointOfArray(flatCoordinates, offset, ends, stride, flatCenters, flatCentersOffset, opt_dest) {
-  var i, ii, x, x1, x2, y1, y2;
-  var y = flatCenters[flatCentersOffset + 1];
-  /** @type {Array<number>} */
-
-  var intersections = []; // Calculate intersections with the horizontal line
-
-  for (var r = 0, rr = ends.length; r < rr; ++r) {
-    var end = ends[r];
-    x1 = flatCoordinates[end - stride];
-    y1 = flatCoordinates[end - stride + 1];
-
-    for (i = offset; i < end; i += stride) {
-      x2 = flatCoordinates[i];
-      y2 = flatCoordinates[i + 1];
-
-      if (y <= y1 && y2 <= y || y1 <= y && y <= y2) {
-        x = (y - y1) / (y2 - y1) * (x2 - x1) + x1;
-        intersections.push(x);
-      }
-
-      x1 = x2;
-      y1 = y2;
-    }
-  } // Find the longest segment of the horizontal line that has its center point
-  // inside the linear ring.
-
-
-  var pointX = NaN;
-  var maxSegmentLength = -Infinity;
-  intersections.sort(_array.numberSafeCompareFunction);
-  x1 = intersections[0];
-
-  for (i = 1, ii = intersections.length; i < ii; ++i) {
-    x2 = intersections[i];
-    var segmentLength = Math.abs(x2 - x1);
-
-    if (segmentLength > maxSegmentLength) {
-      x = (x1 + x2) / 2;
-
-      if ((0, _contains.linearRingsContainsXY)(flatCoordinates, offset, ends, stride, x, y)) {
-        pointX = x;
-        maxSegmentLength = segmentLength;
-      }
-    }
-
-    x1 = x2;
-  }
-
-  if (isNaN(pointX)) {
-    // There is no horizontal line that has its center point inside the linear
-    // ring.  Use the center of the the linear ring's extent.
-    pointX = flatCenters[flatCentersOffset];
-  }
-
-  if (opt_dest) {
-    opt_dest.push(pointX, y, maxSegmentLength);
-    return opt_dest;
-  } else {
-    return [pointX, y, maxSegmentLength];
-  }
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @param {Array<number>} flatCenters Flat centers.
- * @return {Array<number>} Interior points as XYM coordinates, where M is the
- * length of the horizontal intersection that the point belongs to.
- */
-
-
-function getInteriorPointsOfMultiArray(flatCoordinates, offset, endss, stride, flatCenters) {
-  var interiorPoints = [];
-
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-    interiorPoints = getInteriorPointOfArray(flatCoordinates, offset, ends, stride, flatCenters, 2 * i, interiorPoints);
-    offset = ends[ends.length - 1];
-  }
-
-  return interiorPoints;
-}
-},{"./contains.js":"../node_modules/ol/geom/flat/contains.js","../../array.js":"../node_modules/ol/array.js"}],"../node_modules/ol/geom/flat/segments.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.forEach = forEach;
-
-/**
- * @module ol/geom/flat/segments
- */
-
-/**
- * This function calls `callback` for each segment of the flat coordinates
- * array. If the callback returns a truthy value the function returns that
- * value immediately. Otherwise the function returns `false`.
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {function(import("../../coordinate.js").Coordinate, import("../../coordinate.js").Coordinate): T} callback Function
- *     called for each segment.
- * @return {T|boolean} Value.
- * @template T
- */
-function forEach(flatCoordinates, offset, end, stride, callback) {
-  var ret;
-  offset += stride;
-
-  for (; offset < end; offset += stride) {
-    ret = callback(flatCoordinates.slice(offset - stride, offset), flatCoordinates.slice(offset, offset + stride));
-
-    if (ret) {
-      return ret;
-    }
-  }
-
-  return false;
-}
-},{}],"../node_modules/ol/geom/flat/intersectsextent.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.intersectsLineString = intersectsLineString;
-exports.intersectsLineStringArray = intersectsLineStringArray;
-exports.intersectsLinearRing = intersectsLinearRing;
-exports.intersectsLinearRingArray = intersectsLinearRingArray;
-exports.intersectsLinearRingMultiArray = intersectsLinearRingMultiArray;
-
-var _extent = require("../../extent.js");
-
-var _segments = require("./segments.js");
-
-var _contains = require("./contains.js");
-
-/**
- * @module ol/geom/flat/intersectsextent
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {import("../../extent.js").Extent} extent Extent.
- * @return {boolean} True if the geometry and the extent intersect.
- */
-function intersectsLineString(flatCoordinates, offset, end, stride, extent) {
-  var coordinatesExtent = (0, _extent.extendFlatCoordinates)((0, _extent.createEmpty)(), flatCoordinates, offset, end, stride);
-
-  if (!(0, _extent.intersects)(extent, coordinatesExtent)) {
-    return false;
-  }
-
-  if ((0, _extent.containsExtent)(extent, coordinatesExtent)) {
-    return true;
-  }
-
-  if (coordinatesExtent[0] >= extent[0] && coordinatesExtent[2] <= extent[2]) {
-    return true;
-  }
-
-  if (coordinatesExtent[1] >= extent[1] && coordinatesExtent[3] <= extent[3]) {
-    return true;
-  }
-
-  return (0, _segments.forEach)(flatCoordinates, offset, end, stride,
-  /**
-   * @param {import("../../coordinate.js").Coordinate} point1 Start point.
-   * @param {import("../../coordinate.js").Coordinate} point2 End point.
-   * @return {boolean} `true` if the segment and the extent intersect,
-   *     `false` otherwise.
-   */
-  function (point1, point2) {
-    return (0, _extent.intersectsSegment)(extent, point1, point2);
-  });
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {import("../../extent.js").Extent} extent Extent.
- * @return {boolean} True if the geometry and the extent intersect.
- */
-
-
-function intersectsLineStringArray(flatCoordinates, offset, ends, stride, extent) {
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    if (intersectsLineString(flatCoordinates, offset, ends[i], stride, extent)) {
-      return true;
-    }
-
-    offset = ends[i];
-  }
-
-  return false;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {import("../../extent.js").Extent} extent Extent.
- * @return {boolean} True if the geometry and the extent intersect.
- */
-
-
-function intersectsLinearRing(flatCoordinates, offset, end, stride, extent) {
-  if (intersectsLineString(flatCoordinates, offset, end, stride, extent)) {
-    return true;
-  }
-
-  if ((0, _contains.linearRingContainsXY)(flatCoordinates, offset, end, stride, extent[0], extent[1])) {
-    return true;
-  }
-
-  if ((0, _contains.linearRingContainsXY)(flatCoordinates, offset, end, stride, extent[0], extent[3])) {
-    return true;
-  }
-
-  if ((0, _contains.linearRingContainsXY)(flatCoordinates, offset, end, stride, extent[2], extent[1])) {
-    return true;
-  }
-
-  if ((0, _contains.linearRingContainsXY)(flatCoordinates, offset, end, stride, extent[2], extent[3])) {
-    return true;
-  }
-
-  return false;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {import("../../extent.js").Extent} extent Extent.
- * @return {boolean} True if the geometry and the extent intersect.
- */
-
-
-function intersectsLinearRingArray(flatCoordinates, offset, ends, stride, extent) {
-  if (!intersectsLinearRing(flatCoordinates, offset, ends[0], stride, extent)) {
-    return false;
-  }
-
-  if (ends.length === 1) {
-    return true;
-  }
-
-  for (var i = 1, ii = ends.length; i < ii; ++i) {
-    if ((0, _contains.linearRingContainsExtent)(flatCoordinates, ends[i - 1], ends[i], stride, extent)) {
-      if (!intersectsLineString(flatCoordinates, ends[i - 1], ends[i], stride, extent)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @param {import("../../extent.js").Extent} extent Extent.
- * @return {boolean} True if the geometry and the extent intersect.
- */
-
-
-function intersectsLinearRingMultiArray(flatCoordinates, offset, endss, stride, extent) {
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-
-    if (intersectsLinearRingArray(flatCoordinates, offset, ends, stride, extent)) {
-      return true;
-    }
-
-    offset = ends[ends.length - 1];
-  }
-
-  return false;
-}
-},{"../../extent.js":"../node_modules/ol/extent.js","./segments.js":"../node_modules/ol/geom/flat/segments.js","./contains.js":"../node_modules/ol/geom/flat/contains.js"}],"../node_modules/ol/geom/flat/reverse.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.coordinates = coordinates;
-
-/**
- * @module ol/geom/flat/reverse
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- */
-function coordinates(flatCoordinates, offset, end, stride) {
-  while (offset < end - stride) {
-    for (var i = 0; i < stride; ++i) {
-      var tmp = flatCoordinates[offset + i];
-      flatCoordinates[offset + i] = flatCoordinates[end - stride + i];
-      flatCoordinates[end - stride + i] = tmp;
-    }
-
-    offset += stride;
-    end -= stride;
-  }
-}
-},{}],"../node_modules/ol/geom/flat/orient.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.linearRingIsClockwise = linearRingIsClockwise;
-exports.linearRingsAreOriented = linearRingsAreOriented;
-exports.linearRingssAreOriented = linearRingssAreOriented;
-exports.orientLinearRings = orientLinearRings;
-exports.orientLinearRingsArray = orientLinearRingsArray;
-
-var _reverse = require("./reverse.js");
-
-/**
- * @module ol/geom/flat/orient
- */
-
-/**
- * Is the linear ring oriented clockwise in a coordinate system with a bottom-left
- * coordinate origin? For a coordinate system with a top-left coordinate origin,
- * the ring's orientation is clockwise when this function returns false.
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @return {boolean} Is clockwise.
- */
-function linearRingIsClockwise(flatCoordinates, offset, end, stride) {
-  // https://stackoverflow.com/q/1165647/clockwise-method#1165943
-  // https://github.com/OSGeo/gdal/blob/master/gdal/ogr/ogrlinearring.cpp
-  var edge = 0;
-  var x1 = flatCoordinates[end - stride];
-  var y1 = flatCoordinates[end - stride + 1];
-
-  for (; offset < end; offset += stride) {
-    var x2 = flatCoordinates[offset];
-    var y2 = flatCoordinates[offset + 1];
-    edge += (x2 - x1) * (y2 + y1);
-    x1 = x2;
-    y1 = y2;
-  }
-
-  return edge === 0 ? undefined : edge > 0;
-}
-/**
- * Determines if linear rings are oriented.  By default, left-hand orientation
- * is tested (first ring must be clockwise, remaining rings counter-clockwise).
- * To test for right-hand orientation, use the `opt_right` argument.
- *
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Array of end indexes.
- * @param {number} stride Stride.
- * @param {boolean} [opt_right] Test for right-hand orientation
- *     (counter-clockwise exterior ring and clockwise interior rings).
- * @return {boolean} Rings are correctly oriented.
- */
-
-
-function linearRingsAreOriented(flatCoordinates, offset, ends, stride, opt_right) {
-  var right = opt_right !== undefined ? opt_right : false;
-
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    var end = ends[i];
-    var isClockwise = linearRingIsClockwise(flatCoordinates, offset, end, stride);
-
-    if (i === 0) {
-      if (right && isClockwise || !right && !isClockwise) {
-        return false;
-      }
-    } else {
-      if (right && !isClockwise || !right && isClockwise) {
-        return false;
-      }
-    }
-
-    offset = end;
-  }
-
-  return true;
-}
-/**
- * Determines if linear rings are oriented.  By default, left-hand orientation
- * is tested (first ring must be clockwise, remaining rings counter-clockwise).
- * To test for right-hand orientation, use the `opt_right` argument.
- *
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Array of array of end indexes.
- * @param {number} stride Stride.
- * @param {boolean} [opt_right] Test for right-hand orientation
- *     (counter-clockwise exterior ring and clockwise interior rings).
- * @return {boolean} Rings are correctly oriented.
- */
-
-
-function linearRingssAreOriented(flatCoordinates, offset, endss, stride, opt_right) {
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-
-    if (!linearRingsAreOriented(flatCoordinates, offset, ends, stride, opt_right)) {
-      return false;
-    }
-
-    if (ends.length) {
-      offset = ends[ends.length - 1];
-    }
-  }
-
-  return true;
-}
-/**
- * Orient coordinates in a flat array of linear rings.  By default, rings
- * are oriented following the left-hand rule (clockwise for exterior and
- * counter-clockwise for interior rings).  To orient according to the
- * right-hand rule, use the `opt_right` argument.
- *
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {boolean} [opt_right] Follow the right-hand rule for orientation.
- * @return {number} End.
- */
-
-
-function orientLinearRings(flatCoordinates, offset, ends, stride, opt_right) {
-  var right = opt_right !== undefined ? opt_right : false;
-
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    var end = ends[i];
-    var isClockwise = linearRingIsClockwise(flatCoordinates, offset, end, stride);
-    var reverse = i === 0 ? right && isClockwise || !right && !isClockwise : right && !isClockwise || !right && isClockwise;
-
-    if (reverse) {
-      (0, _reverse.coordinates)(flatCoordinates, offset, end, stride);
-    }
-
-    offset = end;
-  }
-
-  return offset;
-}
-/**
- * Orient coordinates in a flat array of linear rings.  By default, rings
- * are oriented following the left-hand rule (clockwise for exterior and
- * counter-clockwise for interior rings).  To orient according to the
- * right-hand rule, use the `opt_right` argument.
- *
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Array of array of end indexes.
- * @param {number} stride Stride.
- * @param {boolean} [opt_right] Follow the right-hand rule for orientation.
- * @return {number} End.
- */
-
-
-function orientLinearRingsArray(flatCoordinates, offset, endss, stride, opt_right) {
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    offset = orientLinearRings(flatCoordinates, offset, endss[i], stride, opt_right);
-  }
-
-  return offset;
-}
-},{"./reverse.js":"../node_modules/ol/geom/flat/reverse.js"}],"../node_modules/ol/geom/Polygon.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.circular = circular;
-exports.default = void 0;
-exports.fromCircle = fromCircle;
-exports.fromExtent = fromExtent;
-exports.makeRegular = makeRegular;
-
-var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
-
-var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
-
-var _LinearRing = _interopRequireDefault(require("./LinearRing.js"));
-
-var _Point = _interopRequireDefault(require("./Point.js"));
-
-var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
-
-var _closest = require("./flat/closest.js");
-
-var _extent = require("../extent.js");
-
-var _deflate = require("./flat/deflate.js");
-
-var _array = require("../array.js");
-
-var _interiorpoint = require("./flat/interiorpoint.js");
-
-var _inflate = require("./flat/inflate.js");
-
-var _intersectsextent = require("./flat/intersectsextent.js");
-
-var _orient = require("./flat/orient.js");
-
-var _area = require("./flat/area.js");
-
-var _contains = require("./flat/contains.js");
-
-var _math = require("../math.js");
-
-var _simplify = require("./flat/simplify.js");
-
-var _sphere = require("../sphere.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/Polygon
- */
-
-
-/**
- * @classdesc
- * Polygon geometry.
- *
- * @api
- */
-var Polygon =
-/** @class */
-function (_super) {
-  __extends(Polygon, _super);
-  /**
-   * @param {!Array<Array<import("../coordinate.js").Coordinate>>|!Array<number>} coordinates
-   *     Array of linear rings that define the polygon. The first linear ring of the
-   *     array defines the outer-boundary or surface of the polygon. Each subsequent
-   *     linear ring defines a hole in the surface of the polygon. A linear ring is
-   *     an array of vertices' coordinates where the first coordinate and the last are
-   *     equivalent. (For internal use, flat coordinates in combination with
-   *     `opt_layout` and `opt_ends` are also accepted.)
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @param {Array<number>} [opt_ends] Ends (for internal use with flat coordinates).
-   */
-
-
-  function Polygon(coordinates, opt_layout, opt_ends) {
-    var _this = _super.call(this) || this;
-    /**
-     * @type {Array<number>}
-     * @private
-     */
-
-
-    _this.ends_ = [];
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.flatInteriorPointRevision_ = -1;
-    /**
-     * @private
-     * @type {import("../coordinate.js").Coordinate}
-     */
-
-    _this.flatInteriorPoint_ = null;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDelta_ = -1;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDeltaRevision_ = -1;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.orientedRevision_ = -1;
-    /**
-     * @private
-     * @type {Array<number>}
-     */
-
-    _this.orientedFlatCoordinates_ = null;
-
-    if (opt_layout !== undefined && opt_ends) {
-      _this.setFlatCoordinates(opt_layout,
-      /** @type {Array<number>} */
-      coordinates);
-
-      _this.ends_ = opt_ends;
-    } else {
-      _this.setCoordinates(
-      /** @type {Array<Array<import("../coordinate.js").Coordinate>>} */
-      coordinates, opt_layout);
-    }
-
-    return _this;
-  }
-  /**
-   * Append the passed linear ring to this polygon.
-   * @param {LinearRing} linearRing Linear ring.
-   * @api
-   */
-
-
-  Polygon.prototype.appendLinearRing = function (linearRing) {
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = linearRing.getFlatCoordinates().slice();
-    } else {
-      (0, _array.extend)(this.flatCoordinates, linearRing.getFlatCoordinates());
-    }
-
-    this.ends_.push(this.flatCoordinates.length);
-    this.changed();
-  };
-  /**
-   * Make a complete copy of the geometry.
-   * @return {!Polygon} Clone.
-   * @api
-   */
-
-
-  Polygon.prototype.clone = function () {
-    var polygon = new Polygon(this.flatCoordinates.slice(), this.layout, this.ends_.slice());
-    polygon.applyProperties(this);
-    return polygon;
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
-   * @param {number} minSquaredDistance Minimum squared distance.
-   * @return {number} Minimum squared distance.
-   */
-
-
-  Polygon.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
-    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
-      return minSquaredDistance;
-    }
-
-    if (this.maxDeltaRevision_ != this.getRevision()) {
-      this.maxDelta_ = Math.sqrt((0, _closest.arrayMaxSquaredDelta)(this.flatCoordinates, 0, this.ends_, this.stride, 0));
-      this.maxDeltaRevision_ = this.getRevision();
-    }
-
-    return (0, _closest.assignClosestArrayPoint)(this.flatCoordinates, 0, this.ends_, this.stride, this.maxDelta_, true, x, y, closestPoint, minSquaredDistance);
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @return {boolean} Contains (x, y).
-   */
-
-
-  Polygon.prototype.containsXY = function (x, y) {
-    return (0, _contains.linearRingsContainsXY)(this.getOrientedFlatCoordinates(), 0, this.ends_, this.stride, x, y);
-  };
-  /**
-   * Return the area of the polygon on projected plane.
-   * @return {number} Area (on projected plane).
-   * @api
-   */
-
-
-  Polygon.prototype.getArea = function () {
-    return (0, _area.linearRings)(this.getOrientedFlatCoordinates(), 0, this.ends_, this.stride);
-  };
-  /**
-   * Get the coordinate array for this geometry.  This array has the structure
-   * of a GeoJSON coordinate array for polygons.
-   *
-   * @param {boolean} [opt_right] Orient coordinates according to the right-hand
-   *     rule (counter-clockwise for exterior and clockwise for interior rings).
-   *     If `false`, coordinates will be oriented according to the left-hand rule
-   *     (clockwise for exterior and counter-clockwise for interior rings).
-   *     By default, coordinate orientation will depend on how the geometry was
-   *     constructed.
-   * @return {Array<Array<import("../coordinate.js").Coordinate>>} Coordinates.
-   * @api
-   */
-
-
-  Polygon.prototype.getCoordinates = function (opt_right) {
-    var flatCoordinates;
-
-    if (opt_right !== undefined) {
-      flatCoordinates = this.getOrientedFlatCoordinates().slice();
-      (0, _orient.orientLinearRings)(flatCoordinates, 0, this.ends_, this.stride, opt_right);
-    } else {
-      flatCoordinates = this.flatCoordinates;
-    }
-
-    return (0, _inflate.inflateCoordinatesArray)(flatCoordinates, 0, this.ends_, this.stride);
-  };
-  /**
-   * @return {Array<number>} Ends.
-   */
-
-
-  Polygon.prototype.getEnds = function () {
-    return this.ends_;
-  };
-  /**
-   * @return {Array<number>} Interior point.
-   */
-
-
-  Polygon.prototype.getFlatInteriorPoint = function () {
-    if (this.flatInteriorPointRevision_ != this.getRevision()) {
-      var flatCenter = (0, _extent.getCenter)(this.getExtent());
-      this.flatInteriorPoint_ = (0, _interiorpoint.getInteriorPointOfArray)(this.getOrientedFlatCoordinates(), 0, this.ends_, this.stride, flatCenter, 0);
-      this.flatInteriorPointRevision_ = this.getRevision();
-    }
-
-    return this.flatInteriorPoint_;
-  };
-  /**
-   * Return an interior point of the polygon.
-   * @return {Point} Interior point as XYM coordinate, where M is the
-   * length of the horizontal intersection that the point belongs to.
-   * @api
-   */
-
-
-  Polygon.prototype.getInteriorPoint = function () {
-    return new _Point.default(this.getFlatInteriorPoint(), _GeometryLayout.default.XYM);
-  };
-  /**
-   * Return the number of rings of the polygon,  this includes the exterior
-   * ring and any interior rings.
-   *
-   * @return {number} Number of rings.
-   * @api
-   */
-
-
-  Polygon.prototype.getLinearRingCount = function () {
-    return this.ends_.length;
-  };
-  /**
-   * Return the Nth linear ring of the polygon geometry. Return `null` if the
-   * given index is out of range.
-   * The exterior linear ring is available at index `0` and the interior rings
-   * at index `1` and beyond.
-   *
-   * @param {number} index Index.
-   * @return {LinearRing} Linear ring.
-   * @api
-   */
-
-
-  Polygon.prototype.getLinearRing = function (index) {
-    if (index < 0 || this.ends_.length <= index) {
-      return null;
-    }
-
-    return new _LinearRing.default(this.flatCoordinates.slice(index === 0 ? 0 : this.ends_[index - 1], this.ends_[index]), this.layout);
-  };
-  /**
-   * Return the linear rings of the polygon.
-   * @return {Array<LinearRing>} Linear rings.
-   * @api
-   */
-
-
-  Polygon.prototype.getLinearRings = function () {
-    var layout = this.layout;
-    var flatCoordinates = this.flatCoordinates;
-    var ends = this.ends_;
-    var linearRings = [];
-    var offset = 0;
-
-    for (var i = 0, ii = ends.length; i < ii; ++i) {
-      var end = ends[i];
-      var linearRing = new _LinearRing.default(flatCoordinates.slice(offset, end), layout);
-      linearRings.push(linearRing);
-      offset = end;
-    }
-
-    return linearRings;
-  };
-  /**
-   * @return {Array<number>} Oriented flat coordinates.
-   */
-
-
-  Polygon.prototype.getOrientedFlatCoordinates = function () {
-    if (this.orientedRevision_ != this.getRevision()) {
-      var flatCoordinates = this.flatCoordinates;
-
-      if ((0, _orient.linearRingsAreOriented)(flatCoordinates, 0, this.ends_, this.stride)) {
-        this.orientedFlatCoordinates_ = flatCoordinates;
-      } else {
-        this.orientedFlatCoordinates_ = flatCoordinates.slice();
-        this.orientedFlatCoordinates_.length = (0, _orient.orientLinearRings)(this.orientedFlatCoordinates_, 0, this.ends_, this.stride);
-      }
-
-      this.orientedRevision_ = this.getRevision();
-    }
-
-    return this.orientedFlatCoordinates_;
-  };
-  /**
-   * @param {number} squaredTolerance Squared tolerance.
-   * @return {Polygon} Simplified Polygon.
-   * @protected
-   */
-
-
-  Polygon.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
-    var simplifiedFlatCoordinates = [];
-    var simplifiedEnds = [];
-    simplifiedFlatCoordinates.length = (0, _simplify.quantizeArray)(this.flatCoordinates, 0, this.ends_, this.stride, Math.sqrt(squaredTolerance), simplifiedFlatCoordinates, 0, simplifiedEnds);
-    return new Polygon(simplifiedFlatCoordinates, _GeometryLayout.default.XY, simplifiedEnds);
-  };
-  /**
-   * Get the type of this geometry.
-   * @return {import("./GeometryType.js").default} Geometry type.
-   * @api
-   */
-
-
-  Polygon.prototype.getType = function () {
-    return _GeometryType.default.POLYGON;
-  };
-  /**
-   * Test if the geometry and the passed extent intersect.
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @return {boolean} `true` if the geometry and the extent intersect.
-   * @api
-   */
-
-
-  Polygon.prototype.intersectsExtent = function (extent) {
-    return (0, _intersectsextent.intersectsLinearRingArray)(this.getOrientedFlatCoordinates(), 0, this.ends_, this.stride, extent);
-  };
-  /**
-   * Set the coordinates of the polygon.
-   * @param {!Array<Array<import("../coordinate.js").Coordinate>>} coordinates Coordinates.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @api
-   */
-
-
-  Polygon.prototype.setCoordinates = function (coordinates, opt_layout) {
-    this.setLayout(opt_layout, coordinates, 2);
-
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = [];
-    }
-
-    var ends = (0, _deflate.deflateCoordinatesArray)(this.flatCoordinates, 0, coordinates, this.stride, this.ends_);
-    this.flatCoordinates.length = ends.length === 0 ? 0 : ends[ends.length - 1];
-    this.changed();
-  };
-
-  return Polygon;
-}(_SimpleGeometry.default);
-
-var _default = Polygon;
-/**
- * Create an approximation of a circle on the surface of a sphere.
- * @param {import("../coordinate.js").Coordinate} center Center (`[lon, lat]` in degrees).
- * @param {number} radius The great-circle distance from the center to
- *     the polygon vertices in meters.
- * @param {number} [opt_n] Optional number of vertices for the resulting
- *     polygon. Default is `32`.
- * @param {number} [opt_sphereRadius] Optional radius for the sphere (defaults to
- *     the Earth's mean radius using the WGS84 ellipsoid).
- * @return {Polygon} The "circular" polygon.
- * @api
- */
-
-exports.default = _default;
-
-function circular(center, radius, opt_n, opt_sphereRadius) {
-  var n = opt_n ? opt_n : 32;
-  /** @type {Array<number>} */
-
-  var flatCoordinates = [];
-
-  for (var i = 0; i < n; ++i) {
-    (0, _array.extend)(flatCoordinates, (0, _sphere.offset)(center, radius, 2 * Math.PI * i / n, opt_sphereRadius));
-  }
-
-  flatCoordinates.push(flatCoordinates[0], flatCoordinates[1]);
-  return new Polygon(flatCoordinates, _GeometryLayout.default.XY, [flatCoordinates.length]);
-}
-/**
- * Create a polygon from an extent. The layout used is `XY`.
- * @param {import("../extent.js").Extent} extent The extent.
- * @return {Polygon} The polygon.
- * @api
- */
-
-
-function fromExtent(extent) {
-  var minX = extent[0];
-  var minY = extent[1];
-  var maxX = extent[2];
-  var maxY = extent[3];
-  var flatCoordinates = [minX, minY, minX, maxY, maxX, maxY, maxX, minY, minX, minY];
-  return new Polygon(flatCoordinates, _GeometryLayout.default.XY, [flatCoordinates.length]);
-}
-/**
- * Create a regular polygon from a circle.
- * @param {import("./Circle.js").default} circle Circle geometry.
- * @param {number} [opt_sides] Number of sides of the polygon. Default is 32.
- * @param {number} [opt_angle] Start angle for the first vertex of the polygon in
- *     counter-clockwise radians. 0 means East. Default is 0.
- * @return {Polygon} Polygon geometry.
- * @api
- */
-
-
-function fromCircle(circle, opt_sides, opt_angle) {
-  var sides = opt_sides ? opt_sides : 32;
-  var stride = circle.getStride();
-  var layout = circle.getLayout();
-  var center = circle.getCenter();
-  var arrayLength = stride * (sides + 1);
-  var flatCoordinates = new Array(arrayLength);
-
-  for (var i = 0; i < arrayLength; i += stride) {
-    flatCoordinates[i] = 0;
-    flatCoordinates[i + 1] = 0;
-
-    for (var j = 2; j < stride; j++) {
-      flatCoordinates[i + j] = center[j];
-    }
-  }
-
-  var ends = [flatCoordinates.length];
-  var polygon = new Polygon(flatCoordinates, layout, ends);
-  makeRegular(polygon, center, circle.getRadius(), opt_angle);
-  return polygon;
-}
-/**
- * Modify the coordinates of a polygon to make it a regular polygon.
- * @param {Polygon} polygon Polygon geometry.
- * @param {import("../coordinate.js").Coordinate} center Center of the regular polygon.
- * @param {number} radius Radius of the regular polygon.
- * @param {number} [opt_angle] Start angle for the first vertex of the polygon in
- *     counter-clockwise radians. 0 means East. Default is 0.
- */
-
-
-function makeRegular(polygon, center, radius, opt_angle) {
-  var flatCoordinates = polygon.getFlatCoordinates();
-  var stride = polygon.getStride();
-  var sides = flatCoordinates.length / stride - 1;
-  var startAngle = opt_angle ? opt_angle : 0;
-
-  for (var i = 0; i <= sides; ++i) {
-    var offset = i * stride;
-    var angle = startAngle + (0, _math.modulo)(i, sides) * 2 * Math.PI / sides;
-    flatCoordinates[offset] = center[0] + radius * Math.cos(angle);
-    flatCoordinates[offset + 1] = center[1] + radius * Math.sin(angle);
-  }
-
-  polygon.changed();
-}
-},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./LinearRing.js":"../node_modules/ol/geom/LinearRing.js","./Point.js":"../node_modules/ol/geom/Point.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","../array.js":"../node_modules/ol/array.js","./flat/interiorpoint.js":"../node_modules/ol/geom/flat/interiorpoint.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/intersectsextent.js":"../node_modules/ol/geom/flat/intersectsextent.js","./flat/orient.js":"../node_modules/ol/geom/flat/orient.js","./flat/area.js":"../node_modules/ol/geom/flat/area.js","./flat/contains.js":"../node_modules/ol/geom/flat/contains.js","../math.js":"../node_modules/ol/math.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js","../sphere.js":"../node_modules/ol/sphere.js"}],"../node_modules/ol/Geolocation.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _Event = _interopRequireDefault(require("./events/Event.js"));
-
-var _Object = _interopRequireDefault(require("./Object.js"));
-
-var _EventType = _interopRequireDefault(require("./events/EventType.js"));
-
-var _Polygon = require("./geom/Polygon.js");
-
-var _proj = require("./proj.js");
-
-var _math = require("./math.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/Geolocation
- */
-
-
-/**
- * @enum {string}
- */
-var Property = {
-  ACCURACY: 'accuracy',
-  ACCURACY_GEOMETRY: 'accuracyGeometry',
-  ALTITUDE: 'altitude',
-  ALTITUDE_ACCURACY: 'altitudeAccuracy',
-  HEADING: 'heading',
-  POSITION: 'position',
-  PROJECTION: 'projection',
-  SPEED: 'speed',
-  TRACKING: 'tracking',
-  TRACKING_OPTIONS: 'trackingOptions'
-};
-/**
- * @classdesc
- * Events emitted on Geolocation error.
- */
-
-var GeolocationError =
-/** @class */
-function (_super) {
-  __extends(GeolocationError, _super);
-  /**
-   * @param {GeolocationPositionError} error error object.
-   */
-
-
-  function GeolocationError(error) {
-    var _this = _super.call(this, _EventType.default.ERROR) || this;
-    /**
-     * @type {number}
-     */
-
-
-    _this.code = error.code;
-    /**
-     * @type {string}
-     */
-
-    _this.message = error.message;
-    return _this;
-  }
-
-  return GeolocationError;
-}(_Event.default);
-/**
- * @typedef {Object} Options
- * @property {boolean} [tracking=false] Start Tracking right after
- * instantiation.
- * @property {PositionOptions} [trackingOptions] Tracking options.
- * See https://www.w3.org/TR/geolocation-API/#position_options_interface.
- * @property {import("./proj.js").ProjectionLike} [projection] The projection the position
- * is reported in.
- */
-
-/**
- * @typedef {import("./ObjectEventType").Types|'change:accuracy'|'change:accuracyGeometry'|'change:altitude'|
- *    'change:altitudeAccuracy'|'change:heading'|'change:position'|'change:projection'|'change:speed'|'change:tracking'|
- *    'change:trackingOptions'} GeolocationObjectEventTypes
- */
-
-/***
- * @template Return
- * @typedef {import("./Observable").OnSignature<import("./Observable").EventTypes, import("./events/Event.js").default, Return> &
- *   import("./Observable").OnSignature<GeolocationObjectEventTypes, import("./Object").ObjectEvent, Return> &
- *   import("./Observable").OnSignature<'error', GeolocationError, Return> &
- *   import("./Observable").CombinedOnSignature<import("./Observable").EventTypes|GeolocationObjectEventTypes|
- *     'error', Return>} GeolocationOnSignature
- */
-
-/**
- * @classdesc
- * Helper class for providing HTML5 Geolocation capabilities.
- * The [Geolocation API](https://www.w3.org/TR/geolocation-API/)
- * is used to locate a user's position.
- *
- * To get notified of position changes, register a listener for the generic
- * `change` event on your instance of {@link module:ol/Geolocation~Geolocation}.
- *
- * Example:
- *
- *     var geolocation = new Geolocation({
- *       // take the projection to use from the map's view
- *       projection: view.getProjection()
- *     });
- *     // listen to changes in position
- *     geolocation.on('change', function(evt) {
- *       window.console.log(geolocation.getPosition());
- *     });
- *
- * @fires module:ol/events/Event~BaseEvent#event:error
- * @api
- */
-
-
-var Geolocation =
-/** @class */
-function (_super) {
-  __extends(Geolocation, _super);
-  /**
-   * @param {Options} [opt_options] Options.
-   */
-
-
-  function Geolocation(opt_options) {
-    var _this = _super.call(this) || this;
-    /***
-     * @type {GeolocationOnSignature<import("./events").EventsKey>}
-     */
-
-
-    _this.on;
-    /***
-     * @type {GeolocationOnSignature<import("./events").EventsKey>}
-     */
-
-    _this.once;
-    /***
-     * @type {GeolocationOnSignature<void>}
-     */
-
-    _this.un;
-    var options = opt_options || {};
-    /**
-     * The unprojected (EPSG:4326) device position.
-     * @private
-     * @type {?import("./coordinate.js").Coordinate}
-     */
-
-    _this.position_ = null;
-    /**
-     * @private
-     * @type {import("./proj.js").TransformFunction}
-     */
-
-    _this.transform_ = _proj.identityTransform;
-    /**
-     * @private
-     * @type {number|undefined}
-     */
-
-    _this.watchId_ = undefined;
-
-    _this.addChangeListener(Property.PROJECTION, _this.handleProjectionChanged_);
-
-    _this.addChangeListener(Property.TRACKING, _this.handleTrackingChanged_);
-
-    if (options.projection !== undefined) {
-      _this.setProjection(options.projection);
-    }
-
-    if (options.trackingOptions !== undefined) {
-      _this.setTrackingOptions(options.trackingOptions);
-    }
-
-    _this.setTracking(options.tracking !== undefined ? options.tracking : false);
-
-    return _this;
-  }
-  /**
-   * Clean up.
-   */
-
-
-  Geolocation.prototype.disposeInternal = function () {
-    this.setTracking(false);
-
-    _super.prototype.disposeInternal.call(this);
-  };
-  /**
-   * @private
-   */
-
-
-  Geolocation.prototype.handleProjectionChanged_ = function () {
-    var projection = this.getProjection();
-
-    if (projection) {
-      this.transform_ = (0, _proj.getTransformFromProjections)((0, _proj.get)('EPSG:4326'), projection);
-
-      if (this.position_) {
-        this.set(Property.POSITION, this.transform_(this.position_));
-      }
-    }
-  };
-  /**
-   * @private
-   */
-
-
-  Geolocation.prototype.handleTrackingChanged_ = function () {
-    if ('geolocation' in navigator) {
-      var tracking = this.getTracking();
-
-      if (tracking && this.watchId_ === undefined) {
-        this.watchId_ = navigator.geolocation.watchPosition(this.positionChange_.bind(this), this.positionError_.bind(this), this.getTrackingOptions());
-      } else if (!tracking && this.watchId_ !== undefined) {
-        navigator.geolocation.clearWatch(this.watchId_);
-        this.watchId_ = undefined;
-      }
-    }
-  };
-  /**
-   * @private
-   * @param {GeolocationPosition} position position event.
-   */
-
-
-  Geolocation.prototype.positionChange_ = function (position) {
-    var coords = position.coords;
-    this.set(Property.ACCURACY, coords.accuracy);
-    this.set(Property.ALTITUDE, coords.altitude === null ? undefined : coords.altitude);
-    this.set(Property.ALTITUDE_ACCURACY, coords.altitudeAccuracy === null ? undefined : coords.altitudeAccuracy);
-    this.set(Property.HEADING, coords.heading === null ? undefined : (0, _math.toRadians)(coords.heading));
-
-    if (!this.position_) {
-      this.position_ = [coords.longitude, coords.latitude];
-    } else {
-      this.position_[0] = coords.longitude;
-      this.position_[1] = coords.latitude;
-    }
-
-    var projectedPosition = this.transform_(this.position_);
-    this.set(Property.POSITION, projectedPosition);
-    this.set(Property.SPEED, coords.speed === null ? undefined : coords.speed);
-    var geometry = (0, _Polygon.circular)(this.position_, coords.accuracy);
-    geometry.applyTransform(this.transform_);
-    this.set(Property.ACCURACY_GEOMETRY, geometry);
-    this.changed();
-  };
-  /**
-   * @private
-   * @param {GeolocationPositionError} error error object.
-   */
-
-
-  Geolocation.prototype.positionError_ = function (error) {
-    this.dispatchEvent(new GeolocationError(error));
-  };
-  /**
-   * Get the accuracy of the position in meters.
-   * @return {number|undefined} The accuracy of the position measurement in
-   *     meters.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getAccuracy = function () {
-    return (
-      /** @type {number|undefined} */
-      this.get(Property.ACCURACY)
-    );
-  };
-  /**
-   * Get a geometry of the position accuracy.
-   * @return {?import("./geom/Polygon.js").default} A geometry of the position accuracy.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getAccuracyGeometry = function () {
-    return (
-      /** @type {?import("./geom/Polygon.js").default} */
-      this.get(Property.ACCURACY_GEOMETRY) || null
-    );
-  };
-  /**
-   * Get the altitude associated with the position.
-   * @return {number|undefined} The altitude of the position in meters above mean
-   *     sea level.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getAltitude = function () {
-    return (
-      /** @type {number|undefined} */
-      this.get(Property.ALTITUDE)
-    );
-  };
-  /**
-   * Get the altitude accuracy of the position.
-   * @return {number|undefined} The accuracy of the altitude measurement in
-   *     meters.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getAltitudeAccuracy = function () {
-    return (
-      /** @type {number|undefined} */
-      this.get(Property.ALTITUDE_ACCURACY)
-    );
-  };
-  /**
-   * Get the heading as radians clockwise from North.
-   * Note: depending on the browser, the heading is only defined if the `enableHighAccuracy`
-   * is set to `true` in the tracking options.
-   * @return {number|undefined} The heading of the device in radians from north.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getHeading = function () {
-    return (
-      /** @type {number|undefined} */
-      this.get(Property.HEADING)
-    );
-  };
-  /**
-   * Get the position of the device.
-   * @return {import("./coordinate.js").Coordinate|undefined} The current position of the device reported
-   *     in the current projection.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getPosition = function () {
-    return (
-      /** @type {import("./coordinate.js").Coordinate|undefined} */
-      this.get(Property.POSITION)
-    );
-  };
-  /**
-   * Get the projection associated with the position.
-   * @return {import("./proj/Projection.js").default|undefined} The projection the position is
-   *     reported in.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getProjection = function () {
-    return (
-      /** @type {import("./proj/Projection.js").default|undefined} */
-      this.get(Property.PROJECTION)
-    );
-  };
-  /**
-   * Get the speed in meters per second.
-   * @return {number|undefined} The instantaneous speed of the device in meters
-   *     per second.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getSpeed = function () {
-    return (
-      /** @type {number|undefined} */
-      this.get(Property.SPEED)
-    );
-  };
-  /**
-   * Determine if the device location is being tracked.
-   * @return {boolean} The device location is being tracked.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getTracking = function () {
-    return (
-      /** @type {boolean} */
-      this.get(Property.TRACKING)
-    );
-  };
-  /**
-   * Get the tracking options.
-   * See https://www.w3.org/TR/geolocation-API/#position-options.
-   * @return {PositionOptions|undefined} PositionOptions as defined by
-   *     the [HTML5 Geolocation spec
-   *     ](https://www.w3.org/TR/geolocation-API/#position_options_interface).
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.getTrackingOptions = function () {
-    return (
-      /** @type {PositionOptions|undefined} */
-      this.get(Property.TRACKING_OPTIONS)
-    );
-  };
-  /**
-   * Set the projection to use for transforming the coordinates.
-   * @param {import("./proj.js").ProjectionLike} projection The projection the position is
-   *     reported in.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.setProjection = function (projection) {
-    this.set(Property.PROJECTION, (0, _proj.get)(projection));
-  };
-  /**
-   * Enable or disable tracking.
-   * @param {boolean} tracking Enable tracking.
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.setTracking = function (tracking) {
-    this.set(Property.TRACKING, tracking);
-  };
-  /**
-   * Set the tracking options.
-   * See http://www.w3.org/TR/geolocation-API/#position-options.
-   * @param {PositionOptions} options PositionOptions as defined by the
-   *     [HTML5 Geolocation spec
-   *     ](http://www.w3.org/TR/geolocation-API/#position_options_interface).
-   * @observable
-   * @api
-   */
-
-
-  Geolocation.prototype.setTrackingOptions = function (options) {
-    this.set(Property.TRACKING_OPTIONS, options);
-  };
-
-  return Geolocation;
-}(_Object.default);
-
-var _default = Geolocation;
-exports.default = _default;
-},{"./events/Event.js":"../node_modules/ol/events/Event.js","./Object.js":"../node_modules/ol/Object.js","./events/EventType.js":"../node_modules/ol/events/EventType.js","./geom/Polygon.js":"../node_modules/ol/geom/Polygon.js","./proj.js":"../node_modules/ol/proj.js","./math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/style/Fill.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-/**
- * @module ol/style/Fill
- */
-
-/**
- * @typedef {Object} Options
- * @property {import("../color.js").Color|import("../colorlike.js").ColorLike} [color=null] A color, gradient or pattern.
- * See {@link module:ol/color~Color} and {@link module:ol/colorlike~ColorLike} for possible formats.
- * Default null; if null, the Canvas/renderer default black will be used.
- */
-
-/**
- * @classdesc
- * Set fill style for vector features.
- * @api
- */
-var Fill =
-/** @class */
-function () {
-  /**
-   * @param {Options} [opt_options] Options.
-   */
-  function Fill(opt_options) {
-    var options = opt_options || {};
-    /**
-     * @private
-     * @type {import("../color.js").Color|import("../colorlike.js").ColorLike}
-     */
-
-    this.color_ = options.color !== undefined ? options.color : null;
-  }
-  /**
-   * Clones the style. The color is not cloned if it is an {@link module:ol/colorlike~ColorLike}.
-   * @return {Fill} The cloned style.
-   * @api
-   */
-
-
-  Fill.prototype.clone = function () {
-    var color = this.getColor();
-    return new Fill({
-      color: Array.isArray(color) ? color.slice() : color || undefined
-    });
-  };
-  /**
-   * Get the fill color.
-   * @return {import("../color.js").Color|import("../colorlike.js").ColorLike} Color.
-   * @api
-   */
-
-
-  Fill.prototype.getColor = function () {
-    return this.color_;
-  };
-  /**
-   * Set the color.
-   *
-   * @param {import("../color.js").Color|import("../colorlike.js").ColorLike} color Color.
-   * @api
-   */
-
-
-  Fill.prototype.setColor = function (color) {
-    this.color_ = color;
-  };
-
-  return Fill;
-}();
-
-var _default = Fill;
-exports.default = _default;
-},{}],"../node_modules/ol/geom/flat/interpolate.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.interpolatePoint = interpolatePoint;
-exports.lineStringCoordinateAtM = lineStringCoordinateAtM;
-exports.lineStringsCoordinateAtM = lineStringsCoordinateAtM;
-
-var _array = require("../../array.js");
-
-var _math = require("../../math.js");
-
-/**
- * @module ol/geom/flat/interpolate
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} fraction Fraction.
- * @param {Array<number>} [opt_dest] Destination.
- * @param {number} [opt_dimension] Destination dimension (default is `2`)
- * @return {Array<number>} Destination.
- */
-function interpolatePoint(flatCoordinates, offset, end, stride, fraction, opt_dest, opt_dimension) {
-  var o, t;
-  var n = (end - offset) / stride;
-
-  if (n === 1) {
-    o = offset;
-  } else if (n === 2) {
-    o = offset;
-    t = fraction;
-  } else if (n !== 0) {
-    var x1 = flatCoordinates[offset];
-    var y1 = flatCoordinates[offset + 1];
-    var length_1 = 0;
-    var cumulativeLengths = [0];
-
-    for (var i = offset + stride; i < end; i += stride) {
-      var x2 = flatCoordinates[i];
-      var y2 = flatCoordinates[i + 1];
-      length_1 += Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-      cumulativeLengths.push(length_1);
-      x1 = x2;
-      y1 = y2;
-    }
-
-    var target = fraction * length_1;
-    var index = (0, _array.binarySearch)(cumulativeLengths, target);
-
-    if (index < 0) {
-      t = (target - cumulativeLengths[-index - 2]) / (cumulativeLengths[-index - 1] - cumulativeLengths[-index - 2]);
-      o = offset + (-index - 2) * stride;
-    } else {
-      o = offset + index * stride;
-    }
-  }
-
-  var dimension = opt_dimension > 1 ? opt_dimension : 2;
-  var dest = opt_dest ? opt_dest : new Array(dimension);
-
-  for (var i = 0; i < dimension; ++i) {
-    dest[i] = o === undefined ? NaN : t === undefined ? flatCoordinates[o + i] : (0, _math.lerp)(flatCoordinates[o + i], flatCoordinates[o + stride + i], t);
-  }
-
-  return dest;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @param {number} m M.
- * @param {boolean} extrapolate Extrapolate.
- * @return {import("../../coordinate.js").Coordinate} Coordinate.
- */
-
-
-function lineStringCoordinateAtM(flatCoordinates, offset, end, stride, m, extrapolate) {
-  if (end == offset) {
-    return null;
-  }
-
-  var coordinate;
-
-  if (m < flatCoordinates[offset + stride - 1]) {
-    if (extrapolate) {
-      coordinate = flatCoordinates.slice(offset, offset + stride);
-      coordinate[stride - 1] = m;
-      return coordinate;
-    } else {
-      return null;
-    }
-  } else if (flatCoordinates[end - 1] < m) {
-    if (extrapolate) {
-      coordinate = flatCoordinates.slice(end - stride, end);
-      coordinate[stride - 1] = m;
-      return coordinate;
-    } else {
-      return null;
-    }
-  } // FIXME use O(1) search
-
-
-  if (m == flatCoordinates[offset + stride - 1]) {
-    return flatCoordinates.slice(offset, offset + stride);
-  }
-
-  var lo = offset / stride;
-  var hi = end / stride;
-
-  while (lo < hi) {
-    var mid = lo + hi >> 1;
-
-    if (m < flatCoordinates[(mid + 1) * stride - 1]) {
-      hi = mid;
-    } else {
-      lo = mid + 1;
-    }
-  }
-
-  var m0 = flatCoordinates[lo * stride - 1];
-
-  if (m == m0) {
-    return flatCoordinates.slice((lo - 1) * stride, (lo - 1) * stride + stride);
-  }
-
-  var m1 = flatCoordinates[(lo + 1) * stride - 1];
-  var t = (m - m0) / (m1 - m0);
-  coordinate = [];
-
-  for (var i = 0; i < stride - 1; ++i) {
-    coordinate.push((0, _math.lerp)(flatCoordinates[(lo - 1) * stride + i], flatCoordinates[lo * stride + i], t));
-  }
-
-  coordinate.push(m);
-  return coordinate;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<number>} ends Ends.
- * @param {number} stride Stride.
- * @param {number} m M.
- * @param {boolean} extrapolate Extrapolate.
- * @param {boolean} interpolate Interpolate.
- * @return {import("../../coordinate.js").Coordinate} Coordinate.
- */
-
-
-function lineStringsCoordinateAtM(flatCoordinates, offset, ends, stride, m, extrapolate, interpolate) {
-  if (interpolate) {
-    return lineStringCoordinateAtM(flatCoordinates, offset, ends[ends.length - 1], stride, m, extrapolate);
-  }
-
-  var coordinate;
-
-  if (m < flatCoordinates[stride - 1]) {
-    if (extrapolate) {
-      coordinate = flatCoordinates.slice(0, stride);
-      coordinate[stride - 1] = m;
-      return coordinate;
-    } else {
-      return null;
-    }
-  }
-
-  if (flatCoordinates[flatCoordinates.length - 1] < m) {
-    if (extrapolate) {
-      coordinate = flatCoordinates.slice(flatCoordinates.length - stride);
-      coordinate[stride - 1] = m;
-      return coordinate;
-    } else {
-      return null;
-    }
-  }
-
-  for (var i = 0, ii = ends.length; i < ii; ++i) {
-    var end = ends[i];
-
-    if (offset == end) {
-      continue;
-    }
-
-    if (m < flatCoordinates[offset + stride - 1]) {
-      return null;
-    } else if (m <= flatCoordinates[end - 1]) {
-      return lineStringCoordinateAtM(flatCoordinates, offset, end, stride, m, false);
-    }
-
-    offset = end;
-  }
-
-  return null;
-}
-},{"../../array.js":"../node_modules/ol/array.js","../../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/length.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.lineStringLength = lineStringLength;
-exports.linearRingLength = linearRingLength;
-
-/**
- * @module ol/geom/flat/length
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @return {number} Length.
- */
-function lineStringLength(flatCoordinates, offset, end, stride) {
-  var x1 = flatCoordinates[offset];
-  var y1 = flatCoordinates[offset + 1];
-  var length = 0;
-
-  for (var i = offset + stride; i < end; i += stride) {
-    var x2 = flatCoordinates[i];
-    var y2 = flatCoordinates[i + 1];
-    length += Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-    x1 = x2;
-    y1 = y2;
-  }
-
-  return length;
-}
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {number} end End.
- * @param {number} stride Stride.
- * @return {number} Perimeter.
- */
-
-
-function linearRingLength(flatCoordinates, offset, end, stride) {
-  var perimeter = lineStringLength(flatCoordinates, offset, end, stride);
-  var dx = flatCoordinates[end - stride] - flatCoordinates[offset];
-  var dy = flatCoordinates[end - stride + 1] - flatCoordinates[offset + 1];
-  perimeter += Math.sqrt(dx * dx + dy * dy);
-  return perimeter;
-}
-},{}],"../node_modules/ol/geom/LineString.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
-
-var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
-
-var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
-
-var _closest = require("./flat/closest.js");
-
-var _extent = require("../extent.js");
-
-var _deflate = require("./flat/deflate.js");
-
-var _simplify = require("./flat/simplify.js");
-
-var _array = require("../array.js");
-
-var _segments = require("./flat/segments.js");
-
-var _inflate = require("./flat/inflate.js");
-
-var _interpolate = require("./flat/interpolate.js");
-
-var _intersectsextent = require("./flat/intersectsextent.js");
-
-var _length = require("./flat/length.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/LineString
- */
-
-
-/**
- * @classdesc
- * Linestring geometry.
- *
- * @api
- */
-var LineString =
-/** @class */
-function (_super) {
-  __extends(LineString, _super);
-  /**
-   * @param {Array<import("../coordinate.js").Coordinate>|Array<number>} coordinates Coordinates.
-   *     For internal use, flat coordinates in combination with `opt_layout` are also accepted.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   */
-
-
-  function LineString(coordinates, opt_layout) {
-    var _this = _super.call(this) || this;
-    /**
-     * @private
-     * @type {import("../coordinate.js").Coordinate}
-     */
-
-
-    _this.flatMidpoint_ = null;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.flatMidpointRevision_ = -1;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDelta_ = -1;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDeltaRevision_ = -1;
-
-    if (opt_layout !== undefined && !Array.isArray(coordinates[0])) {
-      _this.setFlatCoordinates(opt_layout,
-      /** @type {Array<number>} */
-      coordinates);
-    } else {
-      _this.setCoordinates(
-      /** @type {Array<import("../coordinate.js").Coordinate>} */
-      coordinates, opt_layout);
-    }
-
-    return _this;
-  }
-  /**
-   * Append the passed coordinate to the coordinates of the linestring.
-   * @param {import("../coordinate.js").Coordinate} coordinate Coordinate.
-   * @api
-   */
-
-
-  LineString.prototype.appendCoordinate = function (coordinate) {
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = coordinate.slice();
-    } else {
-      (0, _array.extend)(this.flatCoordinates, coordinate);
-    }
-
-    this.changed();
-  };
-  /**
-   * Make a complete copy of the geometry.
-   * @return {!LineString} Clone.
-   * @api
-   */
-
-
-  LineString.prototype.clone = function () {
-    var lineString = new LineString(this.flatCoordinates.slice(), this.layout);
-    lineString.applyProperties(this);
-    return lineString;
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
-   * @param {number} minSquaredDistance Minimum squared distance.
-   * @return {number} Minimum squared distance.
-   */
-
-
-  LineString.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
-    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
-      return minSquaredDistance;
-    }
-
-    if (this.maxDeltaRevision_ != this.getRevision()) {
-      this.maxDelta_ = Math.sqrt((0, _closest.maxSquaredDelta)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, 0));
-      this.maxDeltaRevision_ = this.getRevision();
-    }
-
-    return (0, _closest.assignClosestPoint)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, this.maxDelta_, false, x, y, closestPoint, minSquaredDistance);
-  };
-  /**
-   * Iterate over each segment, calling the provided callback.
-   * If the callback returns a truthy value the function returns that
-   * value immediately. Otherwise the function returns `false`.
-   *
-   * @param {function(this: S, import("../coordinate.js").Coordinate, import("../coordinate.js").Coordinate): T} callback Function
-   *     called for each segment. The function will receive two arguments, the start and end coordinates of the segment.
-   * @return {T|boolean} Value.
-   * @template T,S
-   * @api
-   */
-
-
-  LineString.prototype.forEachSegment = function (callback) {
-    return (0, _segments.forEach)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, callback);
-  };
-  /**
-   * Returns the coordinate at `m` using linear interpolation, or `null` if no
-   * such coordinate exists.
-   *
-   * `opt_extrapolate` controls extrapolation beyond the range of Ms in the
-   * MultiLineString. If `opt_extrapolate` is `true` then Ms less than the first
-   * M will return the first coordinate and Ms greater than the last M will
-   * return the last coordinate.
-   *
-   * @param {number} m M.
-   * @param {boolean} [opt_extrapolate] Extrapolate. Default is `false`.
-   * @return {import("../coordinate.js").Coordinate} Coordinate.
-   * @api
-   */
-
-
-  LineString.prototype.getCoordinateAtM = function (m, opt_extrapolate) {
-    if (this.layout != _GeometryLayout.default.XYM && this.layout != _GeometryLayout.default.XYZM) {
-      return null;
-    }
-
-    var extrapolate = opt_extrapolate !== undefined ? opt_extrapolate : false;
-    return (0, _interpolate.lineStringCoordinateAtM)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, m, extrapolate);
-  };
-  /**
-   * Return the coordinates of the linestring.
-   * @return {Array<import("../coordinate.js").Coordinate>} Coordinates.
-   * @api
-   */
-
-
-  LineString.prototype.getCoordinates = function () {
-    return (0, _inflate.inflateCoordinates)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
-  };
-  /**
-   * Return the coordinate at the provided fraction along the linestring.
-   * The `fraction` is a number between 0 and 1, where 0 is the start of the
-   * linestring and 1 is the end.
-   * @param {number} fraction Fraction.
-   * @param {import("../coordinate.js").Coordinate} [opt_dest] Optional coordinate whose values will
-   *     be modified. If not provided, a new coordinate will be returned.
-   * @return {import("../coordinate.js").Coordinate} Coordinate of the interpolated point.
-   * @api
-   */
-
-
-  LineString.prototype.getCoordinateAt = function (fraction, opt_dest) {
-    return (0, _interpolate.interpolatePoint)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, fraction, opt_dest, this.stride);
-  };
-  /**
-   * Return the length of the linestring on projected plane.
-   * @return {number} Length (on projected plane).
-   * @api
-   */
-
-
-  LineString.prototype.getLength = function () {
-    return (0, _length.lineStringLength)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
-  };
-  /**
-   * @return {Array<number>} Flat midpoint.
-   */
-
-
-  LineString.prototype.getFlatMidpoint = function () {
-    if (this.flatMidpointRevision_ != this.getRevision()) {
-      this.flatMidpoint_ = this.getCoordinateAt(0.5, this.flatMidpoint_);
-      this.flatMidpointRevision_ = this.getRevision();
-    }
-
-    return this.flatMidpoint_;
-  };
-  /**
-   * @param {number} squaredTolerance Squared tolerance.
-   * @return {LineString} Simplified LineString.
-   * @protected
-   */
-
-
-  LineString.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
-    var simplifiedFlatCoordinates = [];
-    simplifiedFlatCoordinates.length = (0, _simplify.douglasPeucker)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, squaredTolerance, simplifiedFlatCoordinates, 0);
-    return new LineString(simplifiedFlatCoordinates, _GeometryLayout.default.XY);
-  };
-  /**
-   * Get the type of this geometry.
-   * @return {import("./GeometryType.js").default} Geometry type.
-   * @api
-   */
-
-
-  LineString.prototype.getType = function () {
-    return _GeometryType.default.LINE_STRING;
-  };
-  /**
-   * Test if the geometry and the passed extent intersect.
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @return {boolean} `true` if the geometry and the extent intersect.
-   * @api
-   */
-
-
-  LineString.prototype.intersectsExtent = function (extent) {
-    return (0, _intersectsextent.intersectsLineString)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride, extent);
-  };
-  /**
-   * Set the coordinates of the linestring.
-   * @param {!Array<import("../coordinate.js").Coordinate>} coordinates Coordinates.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @api
-   */
-
-
-  LineString.prototype.setCoordinates = function (coordinates, opt_layout) {
-    this.setLayout(opt_layout, coordinates, 1);
-
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = [];
-    }
-
-    this.flatCoordinates.length = (0, _deflate.deflateCoordinates)(this.flatCoordinates, 0, coordinates, this.stride);
-    this.changed();
-  };
-
-  return LineString;
-}(_SimpleGeometry.default);
-
-var _default = LineString;
-exports.default = _default;
-},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js","../array.js":"../node_modules/ol/array.js","./flat/segments.js":"../node_modules/ol/geom/flat/segments.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/interpolate.js":"../node_modules/ol/geom/flat/interpolate.js","./flat/intersectsextent.js":"../node_modules/ol/geom/flat/intersectsextent.js","./flat/length.js":"../node_modules/ol/geom/flat/length.js"}],"../node_modules/ol/style/Stroke.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-/**
- * @module ol/style/Stroke
- */
-
-/**
- * @typedef {Object} Options
- * @property {import("../color.js").Color|import("../colorlike.js").ColorLike} [color] A color, gradient or pattern.
- * See {@link module:ol/color~Color} and {@link module:ol/colorlike~ColorLike} for possible formats.
- * Default null; if null, the Canvas/renderer default black will be used.
- * @property {CanvasLineCap} [lineCap='round'] Line cap style: `butt`, `round`, or `square`.
- * @property {CanvasLineJoin} [lineJoin='round'] Line join style: `bevel`, `round`, or `miter`.
- * @property {Array<number>} [lineDash] Line dash pattern. Default is `null` (no dash).
- * Please note that Internet Explorer 10 and lower do not support the `setLineDash` method on
- * the `CanvasRenderingContext2D` and therefore this option will have no visual effect in these browsers.
- * @property {number} [lineDashOffset=0] Line dash offset.
- * @property {number} [miterLimit=10] Miter limit.
- * @property {number} [width] Width.
- */
-
-/**
- * @classdesc
- * Set stroke style for vector features.
- * Note that the defaults given are the Canvas defaults, which will be used if
- * option is not defined. The `get` functions return whatever was entered in
- * the options; they will not return the default.
- * @api
- */
-var Stroke =
-/** @class */
-function () {
-  /**
-   * @param {Options} [opt_options] Options.
-   */
-  function Stroke(opt_options) {
-    var options = opt_options || {};
-    /**
-     * @private
-     * @type {import("../color.js").Color|import("../colorlike.js").ColorLike}
-     */
-
-    this.color_ = options.color !== undefined ? options.color : null;
-    /**
-     * @private
-     * @type {CanvasLineCap|undefined}
-     */
-
-    this.lineCap_ = options.lineCap;
-    /**
-     * @private
-     * @type {Array<number>}
-     */
-
-    this.lineDash_ = options.lineDash !== undefined ? options.lineDash : null;
-    /**
-     * @private
-     * @type {number|undefined}
-     */
-
-    this.lineDashOffset_ = options.lineDashOffset;
-    /**
-     * @private
-     * @type {CanvasLineJoin|undefined}
-     */
-
-    this.lineJoin_ = options.lineJoin;
-    /**
-     * @private
-     * @type {number|undefined}
-     */
-
-    this.miterLimit_ = options.miterLimit;
-    /**
-     * @private
-     * @type {number|undefined}
-     */
-
-    this.width_ = options.width;
-  }
-  /**
-   * Clones the style.
-   * @return {Stroke} The cloned style.
-   * @api
-   */
-
-
-  Stroke.prototype.clone = function () {
-    var color = this.getColor();
-    return new Stroke({
-      color: Array.isArray(color) ? color.slice() : color || undefined,
-      lineCap: this.getLineCap(),
-      lineDash: this.getLineDash() ? this.getLineDash().slice() : undefined,
-      lineDashOffset: this.getLineDashOffset(),
-      lineJoin: this.getLineJoin(),
-      miterLimit: this.getMiterLimit(),
-      width: this.getWidth()
-    });
-  };
-  /**
-   * Get the stroke color.
-   * @return {import("../color.js").Color|import("../colorlike.js").ColorLike} Color.
-   * @api
-   */
-
-
-  Stroke.prototype.getColor = function () {
-    return this.color_;
-  };
-  /**
-   * Get the line cap type for the stroke.
-   * @return {CanvasLineCap|undefined} Line cap.
-   * @api
-   */
-
-
-  Stroke.prototype.getLineCap = function () {
-    return this.lineCap_;
-  };
-  /**
-   * Get the line dash style for the stroke.
-   * @return {Array<number>} Line dash.
-   * @api
-   */
-
-
-  Stroke.prototype.getLineDash = function () {
-    return this.lineDash_;
-  };
-  /**
-   * Get the line dash offset for the stroke.
-   * @return {number|undefined} Line dash offset.
-   * @api
-   */
-
-
-  Stroke.prototype.getLineDashOffset = function () {
-    return this.lineDashOffset_;
-  };
-  /**
-   * Get the line join type for the stroke.
-   * @return {CanvasLineJoin|undefined} Line join.
-   * @api
-   */
-
-
-  Stroke.prototype.getLineJoin = function () {
-    return this.lineJoin_;
-  };
-  /**
-   * Get the miter limit for the stroke.
-   * @return {number|undefined} Miter limit.
-   * @api
-   */
-
-
-  Stroke.prototype.getMiterLimit = function () {
-    return this.miterLimit_;
-  };
-  /**
-   * Get the stroke width.
-   * @return {number|undefined} Width.
-   * @api
-   */
-
-
-  Stroke.prototype.getWidth = function () {
-    return this.width_;
-  };
-  /**
-   * Set the color.
-   *
-   * @param {import("../color.js").Color|import("../colorlike.js").ColorLike} color Color.
-   * @api
-   */
-
-
-  Stroke.prototype.setColor = function (color) {
-    this.color_ = color;
-  };
-  /**
-   * Set the line cap.
-   *
-   * @param {CanvasLineCap|undefined} lineCap Line cap.
-   * @api
-   */
-
-
-  Stroke.prototype.setLineCap = function (lineCap) {
-    this.lineCap_ = lineCap;
-  };
-  /**
-   * Set the line dash.
-   *
-   * Please note that Internet Explorer 10 and lower [do not support][mdn] the
-   * `setLineDash` method on the `CanvasRenderingContext2D` and therefore this
-   * property will have no visual effect in these browsers.
-   *
-   * [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash#Browser_compatibility
-   *
-   * @param {Array<number>} lineDash Line dash.
-   * @api
-   */
-
-
-  Stroke.prototype.setLineDash = function (lineDash) {
-    this.lineDash_ = lineDash;
-  };
-  /**
-   * Set the line dash offset.
-   *
-   * @param {number|undefined} lineDashOffset Line dash offset.
-   * @api
-   */
-
-
-  Stroke.prototype.setLineDashOffset = function (lineDashOffset) {
-    this.lineDashOffset_ = lineDashOffset;
-  };
-  /**
-   * Set the line join.
-   *
-   * @param {CanvasLineJoin|undefined} lineJoin Line join.
-   * @api
-   */
-
-
-  Stroke.prototype.setLineJoin = function (lineJoin) {
-    this.lineJoin_ = lineJoin;
-  };
-  /**
-   * Set the miter limit.
-   *
-   * @param {number|undefined} miterLimit Miter limit.
-   * @api
-   */
-
-
-  Stroke.prototype.setMiterLimit = function (miterLimit) {
-    this.miterLimit_ = miterLimit;
-  };
-  /**
-   * Set the width.
-   *
-   * @param {number|undefined} width Width.
-   * @api
-   */
-
-
-  Stroke.prototype.setWidth = function (width) {
-    this.width_ = width;
-  };
-
-  return Stroke;
-}();
-
-var _default = Stroke;
-exports.default = _default;
 },{}],"../node_modules/ol/style/Image.js":[function(require,module,exports) {
 "use strict";
 
@@ -22531,7 +24141,350 @@ function (_super) {
 
 var _default = CircleStyle;
 exports.default = _default;
-},{"./RegularShape.js":"../node_modules/ol/style/RegularShape.js"}],"../node_modules/ol/style/Style.js":[function(require,module,exports) {
+},{"./RegularShape.js":"../node_modules/ol/style/RegularShape.js"}],"../node_modules/ol/style/Fill.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+/**
+ * @module ol/style/Fill
+ */
+
+/**
+ * @typedef {Object} Options
+ * @property {import("../color.js").Color|import("../colorlike.js").ColorLike} [color=null] A color, gradient or pattern.
+ * See {@link module:ol/color~Color} and {@link module:ol/colorlike~ColorLike} for possible formats.
+ * Default null; if null, the Canvas/renderer default black will be used.
+ */
+
+/**
+ * @classdesc
+ * Set fill style for vector features.
+ * @api
+ */
+var Fill =
+/** @class */
+function () {
+  /**
+   * @param {Options} [opt_options] Options.
+   */
+  function Fill(opt_options) {
+    var options = opt_options || {};
+    /**
+     * @private
+     * @type {import("../color.js").Color|import("../colorlike.js").ColorLike}
+     */
+
+    this.color_ = options.color !== undefined ? options.color : null;
+  }
+  /**
+   * Clones the style. The color is not cloned if it is an {@link module:ol/colorlike~ColorLike}.
+   * @return {Fill} The cloned style.
+   * @api
+   */
+
+
+  Fill.prototype.clone = function () {
+    var color = this.getColor();
+    return new Fill({
+      color: Array.isArray(color) ? color.slice() : color || undefined
+    });
+  };
+  /**
+   * Get the fill color.
+   * @return {import("../color.js").Color|import("../colorlike.js").ColorLike} Color.
+   * @api
+   */
+
+
+  Fill.prototype.getColor = function () {
+    return this.color_;
+  };
+  /**
+   * Set the color.
+   *
+   * @param {import("../color.js").Color|import("../colorlike.js").ColorLike} color Color.
+   * @api
+   */
+
+
+  Fill.prototype.setColor = function (color) {
+    this.color_ = color;
+  };
+
+  return Fill;
+}();
+
+var _default = Fill;
+exports.default = _default;
+},{}],"../node_modules/ol/style/Stroke.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+/**
+ * @module ol/style/Stroke
+ */
+
+/**
+ * @typedef {Object} Options
+ * @property {import("../color.js").Color|import("../colorlike.js").ColorLike} [color] A color, gradient or pattern.
+ * See {@link module:ol/color~Color} and {@link module:ol/colorlike~ColorLike} for possible formats.
+ * Default null; if null, the Canvas/renderer default black will be used.
+ * @property {CanvasLineCap} [lineCap='round'] Line cap style: `butt`, `round`, or `square`.
+ * @property {CanvasLineJoin} [lineJoin='round'] Line join style: `bevel`, `round`, or `miter`.
+ * @property {Array<number>} [lineDash] Line dash pattern. Default is `null` (no dash).
+ * Please note that Internet Explorer 10 and lower do not support the `setLineDash` method on
+ * the `CanvasRenderingContext2D` and therefore this option will have no visual effect in these browsers.
+ * @property {number} [lineDashOffset=0] Line dash offset.
+ * @property {number} [miterLimit=10] Miter limit.
+ * @property {number} [width] Width.
+ */
+
+/**
+ * @classdesc
+ * Set stroke style for vector features.
+ * Note that the defaults given are the Canvas defaults, which will be used if
+ * option is not defined. The `get` functions return whatever was entered in
+ * the options; they will not return the default.
+ * @api
+ */
+var Stroke =
+/** @class */
+function () {
+  /**
+   * @param {Options} [opt_options] Options.
+   */
+  function Stroke(opt_options) {
+    var options = opt_options || {};
+    /**
+     * @private
+     * @type {import("../color.js").Color|import("../colorlike.js").ColorLike}
+     */
+
+    this.color_ = options.color !== undefined ? options.color : null;
+    /**
+     * @private
+     * @type {CanvasLineCap|undefined}
+     */
+
+    this.lineCap_ = options.lineCap;
+    /**
+     * @private
+     * @type {Array<number>}
+     */
+
+    this.lineDash_ = options.lineDash !== undefined ? options.lineDash : null;
+    /**
+     * @private
+     * @type {number|undefined}
+     */
+
+    this.lineDashOffset_ = options.lineDashOffset;
+    /**
+     * @private
+     * @type {CanvasLineJoin|undefined}
+     */
+
+    this.lineJoin_ = options.lineJoin;
+    /**
+     * @private
+     * @type {number|undefined}
+     */
+
+    this.miterLimit_ = options.miterLimit;
+    /**
+     * @private
+     * @type {number|undefined}
+     */
+
+    this.width_ = options.width;
+  }
+  /**
+   * Clones the style.
+   * @return {Stroke} The cloned style.
+   * @api
+   */
+
+
+  Stroke.prototype.clone = function () {
+    var color = this.getColor();
+    return new Stroke({
+      color: Array.isArray(color) ? color.slice() : color || undefined,
+      lineCap: this.getLineCap(),
+      lineDash: this.getLineDash() ? this.getLineDash().slice() : undefined,
+      lineDashOffset: this.getLineDashOffset(),
+      lineJoin: this.getLineJoin(),
+      miterLimit: this.getMiterLimit(),
+      width: this.getWidth()
+    });
+  };
+  /**
+   * Get the stroke color.
+   * @return {import("../color.js").Color|import("../colorlike.js").ColorLike} Color.
+   * @api
+   */
+
+
+  Stroke.prototype.getColor = function () {
+    return this.color_;
+  };
+  /**
+   * Get the line cap type for the stroke.
+   * @return {CanvasLineCap|undefined} Line cap.
+   * @api
+   */
+
+
+  Stroke.prototype.getLineCap = function () {
+    return this.lineCap_;
+  };
+  /**
+   * Get the line dash style for the stroke.
+   * @return {Array<number>} Line dash.
+   * @api
+   */
+
+
+  Stroke.prototype.getLineDash = function () {
+    return this.lineDash_;
+  };
+  /**
+   * Get the line dash offset for the stroke.
+   * @return {number|undefined} Line dash offset.
+   * @api
+   */
+
+
+  Stroke.prototype.getLineDashOffset = function () {
+    return this.lineDashOffset_;
+  };
+  /**
+   * Get the line join type for the stroke.
+   * @return {CanvasLineJoin|undefined} Line join.
+   * @api
+   */
+
+
+  Stroke.prototype.getLineJoin = function () {
+    return this.lineJoin_;
+  };
+  /**
+   * Get the miter limit for the stroke.
+   * @return {number|undefined} Miter limit.
+   * @api
+   */
+
+
+  Stroke.prototype.getMiterLimit = function () {
+    return this.miterLimit_;
+  };
+  /**
+   * Get the stroke width.
+   * @return {number|undefined} Width.
+   * @api
+   */
+
+
+  Stroke.prototype.getWidth = function () {
+    return this.width_;
+  };
+  /**
+   * Set the color.
+   *
+   * @param {import("../color.js").Color|import("../colorlike.js").ColorLike} color Color.
+   * @api
+   */
+
+
+  Stroke.prototype.setColor = function (color) {
+    this.color_ = color;
+  };
+  /**
+   * Set the line cap.
+   *
+   * @param {CanvasLineCap|undefined} lineCap Line cap.
+   * @api
+   */
+
+
+  Stroke.prototype.setLineCap = function (lineCap) {
+    this.lineCap_ = lineCap;
+  };
+  /**
+   * Set the line dash.
+   *
+   * Please note that Internet Explorer 10 and lower [do not support][mdn] the
+   * `setLineDash` method on the `CanvasRenderingContext2D` and therefore this
+   * property will have no visual effect in these browsers.
+   *
+   * [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash#Browser_compatibility
+   *
+   * @param {Array<number>} lineDash Line dash.
+   * @api
+   */
+
+
+  Stroke.prototype.setLineDash = function (lineDash) {
+    this.lineDash_ = lineDash;
+  };
+  /**
+   * Set the line dash offset.
+   *
+   * @param {number|undefined} lineDashOffset Line dash offset.
+   * @api
+   */
+
+
+  Stroke.prototype.setLineDashOffset = function (lineDashOffset) {
+    this.lineDashOffset_ = lineDashOffset;
+  };
+  /**
+   * Set the line join.
+   *
+   * @param {CanvasLineJoin|undefined} lineJoin Line join.
+   * @api
+   */
+
+
+  Stroke.prototype.setLineJoin = function (lineJoin) {
+    this.lineJoin_ = lineJoin;
+  };
+  /**
+   * Set the miter limit.
+   *
+   * @param {number|undefined} miterLimit Miter limit.
+   * @api
+   */
+
+
+  Stroke.prototype.setMiterLimit = function (miterLimit) {
+    this.miterLimit_ = miterLimit;
+  };
+  /**
+   * Set the width.
+   *
+   * @param {number|undefined} width Width.
+   * @api
+   */
+
+
+  Stroke.prototype.setWidth = function (width) {
+    this.width_ = width;
+  };
+
+  return Stroke;
+}();
+
+var _default = Stroke;
+exports.default = _default;
+},{}],"../node_modules/ol/style/Style.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -23136,619 +25089,7 @@ function defaultGeometryFunction(feature) {
 
 var _default = Style;
 exports.default = _default;
-},{"./Circle.js":"../node_modules/ol/style/Circle.js","./Fill.js":"../node_modules/ol/style/Fill.js","../geom/GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./Stroke.js":"../node_modules/ol/style/Stroke.js","../asserts.js":"../node_modules/ol/asserts.js"}],"../node_modules/ol/style/TextPlacement.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-/**
- * @module ol/style/TextPlacement
- */
-
-/**
- * Text placement. One of `'point'`, `'line'`. Default is `'point'`. Note that
- * `'line'` requires the underlying geometry to be a {@link module:ol/geom/LineString~LineString},
- * {@link module:ol/geom/Polygon~Polygon}, {@link module:ol/geom/MultiLineString~MultiLineString} or
- * {@link module:ol/geom/MultiPolygon~MultiPolygon}.
- * @enum {string}
- */
-var _default = {
-  POINT: 'point',
-  LINE: 'line'
-};
-exports.default = _default;
-},{}],"../node_modules/ol/style/Text.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _Fill = _interopRequireDefault(require("./Fill.js"));
-
-var _TextPlacement = _interopRequireDefault(require("./TextPlacement.js"));
-
-var _size = require("../size.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-/**
- * @module ol/style/Text
- */
-
-/**
- * The default fill color to use if no fill was set at construction time; a
- * blackish `#333`.
- *
- * @const {string}
- */
-var DEFAULT_FILL_COLOR = '#333';
-/**
- * @typedef {Object} Options
- * @property {string} [font] Font style as CSS 'font' value, see:
- * https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/font. Default is '10px sans-serif'
- * @property {number} [maxAngle=Math.PI/4] When `placement` is set to `'line'`, allow a maximum angle between adjacent characters.
- * The expected value is in radians, and the default is 45° (`Math.PI / 4`).
- * @property {number} [offsetX=0] Horizontal text offset in pixels. A positive will shift the text right.
- * @property {number} [offsetY=0] Vertical text offset in pixels. A positive will shift the text down.
- * @property {boolean} [overflow=false] For polygon labels or when `placement` is set to `'line'`, allow text to exceed
- * the width of the polygon at the label position or the length of the path that it follows.
- * @property {import("./TextPlacement.js").default|string} [placement='point'] Text placement.
- * @property {number|import("../size.js").Size} [scale] Scale.
- * @property {boolean} [rotateWithView=false] Whether to rotate the text with the view.
- * @property {number} [rotation=0] Rotation in radians (positive rotation clockwise).
- * @property {string} [text] Text content.
- * @property {string} [textAlign] Text alignment. Possible values: 'left', 'right', 'center', 'end' or 'start'.
- * Default is 'center' for `placement: 'point'`. For `placement: 'line'`, the default is to let the renderer choose a
- * placement where `maxAngle` is not exceeded.
- * @property {string} [textBaseline='middle'] Text base line. Possible values: 'bottom', 'top', 'middle', 'alphabetic',
- * 'hanging', 'ideographic'.
- * @property {import("./Fill.js").default} [fill] Fill style. If none is provided, we'll use a dark fill-style (#333).
- * @property {import("./Stroke.js").default} [stroke] Stroke style.
- * @property {import("./Fill.js").default} [backgroundFill] Fill style for the text background when `placement` is
- * `'point'`. Default is no fill.
- * @property {import("./Stroke.js").default} [backgroundStroke] Stroke style for the text background  when `placement`
- * is `'point'`. Default is no stroke.
- * @property {Array<number>} [padding=[0, 0, 0, 0]] Padding in pixels around the text for decluttering and background. The order of
- * values in the array is `[top, right, bottom, left]`.
- */
-
-/**
- * @classdesc
- * Set text style for vector features.
- * @api
- */
-
-var Text =
-/** @class */
-function () {
-  /**
-   * @param {Options} [opt_options] Options.
-   */
-  function Text(opt_options) {
-    var options = opt_options || {};
-    /**
-     * @private
-     * @type {string|undefined}
-     */
-
-    this.font_ = options.font;
-    /**
-     * @private
-     * @type {number|undefined}
-     */
-
-    this.rotation_ = options.rotation;
-    /**
-     * @private
-     * @type {boolean|undefined}
-     */
-
-    this.rotateWithView_ = options.rotateWithView;
-    /**
-     * @private
-     * @type {number|import("../size.js").Size|undefined}
-     */
-
-    this.scale_ = options.scale;
-    /**
-     * @private
-     * @type {import("../size.js").Size}
-     */
-
-    this.scaleArray_ = (0, _size.toSize)(options.scale !== undefined ? options.scale : 1);
-    /**
-     * @private
-     * @type {string|undefined}
-     */
-
-    this.text_ = options.text;
-    /**
-     * @private
-     * @type {string|undefined}
-     */
-
-    this.textAlign_ = options.textAlign;
-    /**
-     * @private
-     * @type {string|undefined}
-     */
-
-    this.textBaseline_ = options.textBaseline;
-    /**
-     * @private
-     * @type {import("./Fill.js").default}
-     */
-
-    this.fill_ = options.fill !== undefined ? options.fill : new _Fill.default({
-      color: DEFAULT_FILL_COLOR
-    });
-    /**
-     * @private
-     * @type {number}
-     */
-
-    this.maxAngle_ = options.maxAngle !== undefined ? options.maxAngle : Math.PI / 4;
-    /**
-     * @private
-     * @type {import("./TextPlacement.js").default|string}
-     */
-
-    this.placement_ = options.placement !== undefined ? options.placement : _TextPlacement.default.POINT;
-    /**
-     * @private
-     * @type {boolean}
-     */
-
-    this.overflow_ = !!options.overflow;
-    /**
-     * @private
-     * @type {import("./Stroke.js").default}
-     */
-
-    this.stroke_ = options.stroke !== undefined ? options.stroke : null;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    this.offsetX_ = options.offsetX !== undefined ? options.offsetX : 0;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    this.offsetY_ = options.offsetY !== undefined ? options.offsetY : 0;
-    /**
-     * @private
-     * @type {import("./Fill.js").default}
-     */
-
-    this.backgroundFill_ = options.backgroundFill ? options.backgroundFill : null;
-    /**
-     * @private
-     * @type {import("./Stroke.js").default}
-     */
-
-    this.backgroundStroke_ = options.backgroundStroke ? options.backgroundStroke : null;
-    /**
-     * @private
-     * @type {Array<number>}
-     */
-
-    this.padding_ = options.padding === undefined ? null : options.padding;
-  }
-  /**
-   * Clones the style.
-   * @return {Text} The cloned style.
-   * @api
-   */
-
-
-  Text.prototype.clone = function () {
-    var scale = this.getScale();
-    return new Text({
-      font: this.getFont(),
-      placement: this.getPlacement(),
-      maxAngle: this.getMaxAngle(),
-      overflow: this.getOverflow(),
-      rotation: this.getRotation(),
-      rotateWithView: this.getRotateWithView(),
-      scale: Array.isArray(scale) ? scale.slice() : scale,
-      text: this.getText(),
-      textAlign: this.getTextAlign(),
-      textBaseline: this.getTextBaseline(),
-      fill: this.getFill() ? this.getFill().clone() : undefined,
-      stroke: this.getStroke() ? this.getStroke().clone() : undefined,
-      offsetX: this.getOffsetX(),
-      offsetY: this.getOffsetY(),
-      backgroundFill: this.getBackgroundFill() ? this.getBackgroundFill().clone() : undefined,
-      backgroundStroke: this.getBackgroundStroke() ? this.getBackgroundStroke().clone() : undefined,
-      padding: this.getPadding()
-    });
-  };
-  /**
-   * Get the `overflow` configuration.
-   * @return {boolean} Let text overflow the length of the path they follow.
-   * @api
-   */
-
-
-  Text.prototype.getOverflow = function () {
-    return this.overflow_;
-  };
-  /**
-   * Get the font name.
-   * @return {string|undefined} Font.
-   * @api
-   */
-
-
-  Text.prototype.getFont = function () {
-    return this.font_;
-  };
-  /**
-   * Get the maximum angle between adjacent characters.
-   * @return {number} Angle in radians.
-   * @api
-   */
-
-
-  Text.prototype.getMaxAngle = function () {
-    return this.maxAngle_;
-  };
-  /**
-   * Get the label placement.
-   * @return {import("./TextPlacement.js").default|string} Text placement.
-   * @api
-   */
-
-
-  Text.prototype.getPlacement = function () {
-    return this.placement_;
-  };
-  /**
-   * Get the x-offset for the text.
-   * @return {number} Horizontal text offset.
-   * @api
-   */
-
-
-  Text.prototype.getOffsetX = function () {
-    return this.offsetX_;
-  };
-  /**
-   * Get the y-offset for the text.
-   * @return {number} Vertical text offset.
-   * @api
-   */
-
-
-  Text.prototype.getOffsetY = function () {
-    return this.offsetY_;
-  };
-  /**
-   * Get the fill style for the text.
-   * @return {import("./Fill.js").default} Fill style.
-   * @api
-   */
-
-
-  Text.prototype.getFill = function () {
-    return this.fill_;
-  };
-  /**
-   * Determine whether the text rotates with the map.
-   * @return {boolean|undefined} Rotate with map.
-   * @api
-   */
-
-
-  Text.prototype.getRotateWithView = function () {
-    return this.rotateWithView_;
-  };
-  /**
-   * Get the text rotation.
-   * @return {number|undefined} Rotation.
-   * @api
-   */
-
-
-  Text.prototype.getRotation = function () {
-    return this.rotation_;
-  };
-  /**
-   * Get the text scale.
-   * @return {number|import("../size.js").Size|undefined} Scale.
-   * @api
-   */
-
-
-  Text.prototype.getScale = function () {
-    return this.scale_;
-  };
-  /**
-   * Get the symbolizer scale array.
-   * @return {import("../size.js").Size} Scale array.
-   */
-
-
-  Text.prototype.getScaleArray = function () {
-    return this.scaleArray_;
-  };
-  /**
-   * Get the stroke style for the text.
-   * @return {import("./Stroke.js").default} Stroke style.
-   * @api
-   */
-
-
-  Text.prototype.getStroke = function () {
-    return this.stroke_;
-  };
-  /**
-   * Get the text to be rendered.
-   * @return {string|undefined} Text.
-   * @api
-   */
-
-
-  Text.prototype.getText = function () {
-    return this.text_;
-  };
-  /**
-   * Get the text alignment.
-   * @return {string|undefined} Text align.
-   * @api
-   */
-
-
-  Text.prototype.getTextAlign = function () {
-    return this.textAlign_;
-  };
-  /**
-   * Get the text baseline.
-   * @return {string|undefined} Text baseline.
-   * @api
-   */
-
-
-  Text.prototype.getTextBaseline = function () {
-    return this.textBaseline_;
-  };
-  /**
-   * Get the background fill style for the text.
-   * @return {import("./Fill.js").default} Fill style.
-   * @api
-   */
-
-
-  Text.prototype.getBackgroundFill = function () {
-    return this.backgroundFill_;
-  };
-  /**
-   * Get the background stroke style for the text.
-   * @return {import("./Stroke.js").default} Stroke style.
-   * @api
-   */
-
-
-  Text.prototype.getBackgroundStroke = function () {
-    return this.backgroundStroke_;
-  };
-  /**
-   * Get the padding for the text.
-   * @return {Array<number>} Padding.
-   * @api
-   */
-
-
-  Text.prototype.getPadding = function () {
-    return this.padding_;
-  };
-  /**
-   * Set the `overflow` property.
-   *
-   * @param {boolean} overflow Let text overflow the path that it follows.
-   * @api
-   */
-
-
-  Text.prototype.setOverflow = function (overflow) {
-    this.overflow_ = overflow;
-  };
-  /**
-   * Set the font.
-   *
-   * @param {string|undefined} font Font.
-   * @api
-   */
-
-
-  Text.prototype.setFont = function (font) {
-    this.font_ = font;
-  };
-  /**
-   * Set the maximum angle between adjacent characters.
-   *
-   * @param {number} maxAngle Angle in radians.
-   * @api
-   */
-
-
-  Text.prototype.setMaxAngle = function (maxAngle) {
-    this.maxAngle_ = maxAngle;
-  };
-  /**
-   * Set the x offset.
-   *
-   * @param {number} offsetX Horizontal text offset.
-   * @api
-   */
-
-
-  Text.prototype.setOffsetX = function (offsetX) {
-    this.offsetX_ = offsetX;
-  };
-  /**
-   * Set the y offset.
-   *
-   * @param {number} offsetY Vertical text offset.
-   * @api
-   */
-
-
-  Text.prototype.setOffsetY = function (offsetY) {
-    this.offsetY_ = offsetY;
-  };
-  /**
-   * Set the text placement.
-   *
-   * @param {import("./TextPlacement.js").default|string} placement Placement.
-   * @api
-   */
-
-
-  Text.prototype.setPlacement = function (placement) {
-    this.placement_ = placement;
-  };
-  /**
-   * Set whether to rotate the text with the view.
-   *
-   * @param {boolean} rotateWithView Rotate with map.
-   * @api
-   */
-
-
-  Text.prototype.setRotateWithView = function (rotateWithView) {
-    this.rotateWithView_ = rotateWithView;
-  };
-  /**
-   * Set the fill.
-   *
-   * @param {import("./Fill.js").default} fill Fill style.
-   * @api
-   */
-
-
-  Text.prototype.setFill = function (fill) {
-    this.fill_ = fill;
-  };
-  /**
-   * Set the rotation.
-   *
-   * @param {number|undefined} rotation Rotation.
-   * @api
-   */
-
-
-  Text.prototype.setRotation = function (rotation) {
-    this.rotation_ = rotation;
-  };
-  /**
-   * Set the scale.
-   *
-   * @param {number|import("../size.js").Size|undefined} scale Scale.
-   * @api
-   */
-
-
-  Text.prototype.setScale = function (scale) {
-    this.scale_ = scale;
-    this.scaleArray_ = (0, _size.toSize)(scale !== undefined ? scale : 1);
-  };
-  /**
-   * Set the stroke.
-   *
-   * @param {import("./Stroke.js").default} stroke Stroke style.
-   * @api
-   */
-
-
-  Text.prototype.setStroke = function (stroke) {
-    this.stroke_ = stroke;
-  };
-  /**
-   * Set the text.
-   *
-   * @param {string|undefined} text Text.
-   * @api
-   */
-
-
-  Text.prototype.setText = function (text) {
-    this.text_ = text;
-  };
-  /**
-   * Set the text alignment.
-   *
-   * @param {string|undefined} textAlign Text align.
-   * @api
-   */
-
-
-  Text.prototype.setTextAlign = function (textAlign) {
-    this.textAlign_ = textAlign;
-  };
-  /**
-   * Set the text baseline.
-   *
-   * @param {string|undefined} textBaseline Text baseline.
-   * @api
-   */
-
-
-  Text.prototype.setTextBaseline = function (textBaseline) {
-    this.textBaseline_ = textBaseline;
-  };
-  /**
-   * Set the background fill.
-   *
-   * @param {import("./Fill.js").default} fill Fill style.
-   * @api
-   */
-
-
-  Text.prototype.setBackgroundFill = function (fill) {
-    this.backgroundFill_ = fill;
-  };
-  /**
-   * Set the background stroke.
-   *
-   * @param {import("./Stroke.js").default} stroke Stroke style.
-   * @api
-   */
-
-
-  Text.prototype.setBackgroundStroke = function (stroke) {
-    this.backgroundStroke_ = stroke;
-  };
-  /**
-   * Set the padding (`[top, right, bottom, left]`).
-   *
-   * @param {!Array<number>} padding Padding.
-   * @api
-   */
-
-
-  Text.prototype.setPadding = function (padding) {
-    this.padding_ = padding;
-  };
-
-  return Text;
-}();
-
-var _default = Text;
-exports.default = _default;
-},{"./Fill.js":"../node_modules/ol/style/Fill.js","./TextPlacement.js":"../node_modules/ol/style/TextPlacement.js","../size.js":"../node_modules/ol/size.js"}],"../node_modules/rbush/rbush.min.js":[function(require,module,exports) {
-var define;
-!function(t,i){"object"==typeof exports&&"undefined"!=typeof module?module.exports=i():"function"==typeof define&&define.amd?define(i):(t=t||self).RBush=i()}(this,function(){"use strict";function t(t,r,e,a,h){!function t(n,r,e,a,h){for(;a>e;){if(a-e>600){var o=a-e+1,s=r-e+1,l=Math.log(o),f=.5*Math.exp(2*l/3),u=.5*Math.sqrt(l*f*(o-f)/o)*(s-o/2<0?-1:1),m=Math.max(e,Math.floor(r-s*f/o+u)),c=Math.min(a,Math.floor(r+(o-s)*f/o+u));t(n,r,m,c,h)}var p=n[r],d=e,x=a;for(i(n,e,r),h(n[a],p)>0&&i(n,e,a);d<x;){for(i(n,d,x),d++,x--;h(n[d],p)<0;)d++;for(;h(n[x],p)>0;)x--}0===h(n[e],p)?i(n,e,x):i(n,++x,a),x<=r&&(e=x+1),r<=x&&(a=x-1)}}(t,r,e||0,a||t.length-1,h||n)}function i(t,i,n){var r=t[i];t[i]=t[n],t[n]=r}function n(t,i){return t<i?-1:t>i?1:0}var r=function(t){void 0===t&&(t=9),this._maxEntries=Math.max(4,t),this._minEntries=Math.max(2,Math.ceil(.4*this._maxEntries)),this.clear()};function e(t,i,n){if(!n)return i.indexOf(t);for(var r=0;r<i.length;r++)if(n(t,i[r]))return r;return-1}function a(t,i){h(t,0,t.children.length,i,t)}function h(t,i,n,r,e){e||(e=p(null)),e.minX=1/0,e.minY=1/0,e.maxX=-1/0,e.maxY=-1/0;for(var a=i;a<n;a++){var h=t.children[a];o(e,t.leaf?r(h):h)}return e}function o(t,i){return t.minX=Math.min(t.minX,i.minX),t.minY=Math.min(t.minY,i.minY),t.maxX=Math.max(t.maxX,i.maxX),t.maxY=Math.max(t.maxY,i.maxY),t}function s(t,i){return t.minX-i.minX}function l(t,i){return t.minY-i.minY}function f(t){return(t.maxX-t.minX)*(t.maxY-t.minY)}function u(t){return t.maxX-t.minX+(t.maxY-t.minY)}function m(t,i){return t.minX<=i.minX&&t.minY<=i.minY&&i.maxX<=t.maxX&&i.maxY<=t.maxY}function c(t,i){return i.minX<=t.maxX&&i.minY<=t.maxY&&i.maxX>=t.minX&&i.maxY>=t.minY}function p(t){return{children:t,height:1,leaf:!0,minX:1/0,minY:1/0,maxX:-1/0,maxY:-1/0}}function d(i,n,r,e,a){for(var h=[n,r];h.length;)if(!((r=h.pop())-(n=h.pop())<=e)){var o=n+Math.ceil((r-n)/e/2)*e;t(i,o,n,r,a),h.push(n,o,o,r)}}return r.prototype.all=function(){return this._all(this.data,[])},r.prototype.search=function(t){var i=this.data,n=[];if(!c(t,i))return n;for(var r=this.toBBox,e=[];i;){for(var a=0;a<i.children.length;a++){var h=i.children[a],o=i.leaf?r(h):h;c(t,o)&&(i.leaf?n.push(h):m(t,o)?this._all(h,n):e.push(h))}i=e.pop()}return n},r.prototype.collides=function(t){var i=this.data;if(!c(t,i))return!1;for(var n=[];i;){for(var r=0;r<i.children.length;r++){var e=i.children[r],a=i.leaf?this.toBBox(e):e;if(c(t,a)){if(i.leaf||m(t,a))return!0;n.push(e)}}i=n.pop()}return!1},r.prototype.load=function(t){if(!t||!t.length)return this;if(t.length<this._minEntries){for(var i=0;i<t.length;i++)this.insert(t[i]);return this}var n=this._build(t.slice(),0,t.length-1,0);if(this.data.children.length)if(this.data.height===n.height)this._splitRoot(this.data,n);else{if(this.data.height<n.height){var r=this.data;this.data=n,n=r}this._insert(n,this.data.height-n.height-1,!0)}else this.data=n;return this},r.prototype.insert=function(t){return t&&this._insert(t,this.data.height-1),this},r.prototype.clear=function(){return this.data=p([]),this},r.prototype.remove=function(t,i){if(!t)return this;for(var n,r,a,h=this.data,o=this.toBBox(t),s=[],l=[];h||s.length;){if(h||(h=s.pop(),r=s[s.length-1],n=l.pop(),a=!0),h.leaf){var f=e(t,h.children,i);if(-1!==f)return h.children.splice(f,1),s.push(h),this._condense(s),this}a||h.leaf||!m(h,o)?r?(n++,h=r.children[n],a=!1):h=null:(s.push(h),l.push(n),n=0,r=h,h=h.children[0])}return this},r.prototype.toBBox=function(t){return t},r.prototype.compareMinX=function(t,i){return t.minX-i.minX},r.prototype.compareMinY=function(t,i){return t.minY-i.minY},r.prototype.toJSON=function(){return this.data},r.prototype.fromJSON=function(t){return this.data=t,this},r.prototype._all=function(t,i){for(var n=[];t;)t.leaf?i.push.apply(i,t.children):n.push.apply(n,t.children),t=n.pop();return i},r.prototype._build=function(t,i,n,r){var e,h=n-i+1,o=this._maxEntries;if(h<=o)return a(e=p(t.slice(i,n+1)),this.toBBox),e;r||(r=Math.ceil(Math.log(h)/Math.log(o)),o=Math.ceil(h/Math.pow(o,r-1))),(e=p([])).leaf=!1,e.height=r;var s=Math.ceil(h/o),l=s*Math.ceil(Math.sqrt(o));d(t,i,n,l,this.compareMinX);for(var f=i;f<=n;f+=l){var u=Math.min(f+l-1,n);d(t,f,u,s,this.compareMinY);for(var m=f;m<=u;m+=s){var c=Math.min(m+s-1,u);e.children.push(this._build(t,m,c,r-1))}}return a(e,this.toBBox),e},r.prototype._chooseSubtree=function(t,i,n,r){for(;r.push(i),!i.leaf&&r.length-1!==n;){for(var e=1/0,a=1/0,h=void 0,o=0;o<i.children.length;o++){var s=i.children[o],l=f(s),u=(m=t,c=s,(Math.max(c.maxX,m.maxX)-Math.min(c.minX,m.minX))*(Math.max(c.maxY,m.maxY)-Math.min(c.minY,m.minY))-l);u<a?(a=u,e=l<e?l:e,h=s):u===a&&l<e&&(e=l,h=s)}i=h||i.children[0]}var m,c;return i},r.prototype._insert=function(t,i,n){var r=n?t:this.toBBox(t),e=[],a=this._chooseSubtree(r,this.data,i,e);for(a.children.push(t),o(a,r);i>=0&&e[i].children.length>this._maxEntries;)this._split(e,i),i--;this._adjustParentBBoxes(r,e,i)},r.prototype._split=function(t,i){var n=t[i],r=n.children.length,e=this._minEntries;this._chooseSplitAxis(n,e,r);var h=this._chooseSplitIndex(n,e,r),o=p(n.children.splice(h,n.children.length-h));o.height=n.height,o.leaf=n.leaf,a(n,this.toBBox),a(o,this.toBBox),i?t[i-1].children.push(o):this._splitRoot(n,o)},r.prototype._splitRoot=function(t,i){this.data=p([t,i]),this.data.height=t.height+1,this.data.leaf=!1,a(this.data,this.toBBox)},r.prototype._chooseSplitIndex=function(t,i,n){for(var r,e,a,o,s,l,u,m=1/0,c=1/0,p=i;p<=n-i;p++){var d=h(t,0,p,this.toBBox),x=h(t,p,n,this.toBBox),v=(e=d,a=x,o=void 0,s=void 0,l=void 0,u=void 0,o=Math.max(e.minX,a.minX),s=Math.max(e.minY,a.minY),l=Math.min(e.maxX,a.maxX),u=Math.min(e.maxY,a.maxY),Math.max(0,l-o)*Math.max(0,u-s)),M=f(d)+f(x);v<m?(m=v,r=p,c=M<c?M:c):v===m&&M<c&&(c=M,r=p)}return r||n-i},r.prototype._chooseSplitAxis=function(t,i,n){var r=t.leaf?this.compareMinX:s,e=t.leaf?this.compareMinY:l;this._allDistMargin(t,i,n,r)<this._allDistMargin(t,i,n,e)&&t.children.sort(r)},r.prototype._allDistMargin=function(t,i,n,r){t.children.sort(r);for(var e=this.toBBox,a=h(t,0,i,e),s=h(t,n-i,n,e),l=u(a)+u(s),f=i;f<n-i;f++){var m=t.children[f];o(a,t.leaf?e(m):m),l+=u(a)}for(var c=n-i-1;c>=i;c--){var p=t.children[c];o(s,t.leaf?e(p):p),l+=u(s)}return l},r.prototype._adjustParentBBoxes=function(t,i,n){for(var r=n;r>=0;r--)o(i[r],t)},r.prototype._condense=function(t){for(var i=t.length-1,n=void 0;i>=0;i--)0===t[i].children.length?i>0?(n=t[i-1].children).splice(n.indexOf(t[i]),1):this.clear():a(t[i],this.toBBox)},r});
-
-},{}],"../node_modules/ol/layer/BaseVector.js":[function(require,module,exports) {
+},{"./Circle.js":"../node_modules/ol/style/Circle.js","./Fill.js":"../node_modules/ol/style/Fill.js","../geom/GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./Stroke.js":"../node_modules/ol/style/Stroke.js","../asserts.js":"../node_modules/ol/asserts.js"}],"../node_modules/ol/layer/BaseVector.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25544,7 +26885,31 @@ function (_super) {
 
 var _default = CanvasPolygonBuilder;
 exports.default = _default;
-},{"./Builder.js":"../node_modules/ol/render/canvas/Builder.js","./Instruction.js":"../node_modules/ol/render/canvas/Instruction.js","../canvas.js":"../node_modules/ol/render/canvas.js","../../geom/flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js"}],"../node_modules/ol/geom/flat/straightchunk.js":[function(require,module,exports) {
+},{"./Builder.js":"../node_modules/ol/render/canvas/Builder.js","./Instruction.js":"../node_modules/ol/render/canvas/Instruction.js","../canvas.js":"../node_modules/ol/render/canvas.js","../../geom/flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js"}],"../node_modules/ol/style/TextPlacement.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+/**
+ * @module ol/style/TextPlacement
+ */
+
+/**
+ * Text placement. One of `'point'`, `'line'`. Default is `'point'`. Note that
+ * `'line'` requires the underlying geometry to be a {@link module:ol/geom/LineString~LineString},
+ * {@link module:ol/geom/Polygon~Polygon}, {@link module:ol/geom/MultiLineString~MultiLineString} or
+ * {@link module:ol/geom/MultiPolygon~MultiPolygon}.
+ * @enum {string}
+ */
+var _default = {
+  POINT: 'point',
+  LINE: 'line'
+};
+exports.default = _default;
+},{}],"../node_modules/ol/geom/flat/straightchunk.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30275,7 +31640,591 @@ function (_super) {
 
 var _default = Icon;
 exports.default = _default;
-},{"../events/EventType.js":"../node_modules/ol/events/EventType.js","./IconAnchorUnits.js":"../node_modules/ol/style/IconAnchorUnits.js","./IconOrigin.js":"../node_modules/ol/style/IconOrigin.js","../ImageState.js":"../node_modules/ol/ImageState.js","./Image.js":"../node_modules/ol/style/Image.js","../color.js":"../node_modules/ol/color.js","../asserts.js":"../node_modules/ol/asserts.js","./IconImage.js":"../node_modules/ol/style/IconImage.js","../util.js":"../node_modules/ol/util.js"}],"../node_modules/ol/style.js":[function(require,module,exports) {
+},{"../events/EventType.js":"../node_modules/ol/events/EventType.js","./IconAnchorUnits.js":"../node_modules/ol/style/IconAnchorUnits.js","./IconOrigin.js":"../node_modules/ol/style/IconOrigin.js","../ImageState.js":"../node_modules/ol/ImageState.js","./Image.js":"../node_modules/ol/style/Image.js","../color.js":"../node_modules/ol/color.js","../asserts.js":"../node_modules/ol/asserts.js","./IconImage.js":"../node_modules/ol/style/IconImage.js","../util.js":"../node_modules/ol/util.js"}],"../node_modules/ol/style/Text.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _Fill = _interopRequireDefault(require("./Fill.js"));
+
+var _TextPlacement = _interopRequireDefault(require("./TextPlacement.js"));
+
+var _size = require("../size.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * @module ol/style/Text
+ */
+
+/**
+ * The default fill color to use if no fill was set at construction time; a
+ * blackish `#333`.
+ *
+ * @const {string}
+ */
+var DEFAULT_FILL_COLOR = '#333';
+/**
+ * @typedef {Object} Options
+ * @property {string} [font] Font style as CSS 'font' value, see:
+ * https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/font. Default is '10px sans-serif'
+ * @property {number} [maxAngle=Math.PI/4] When `placement` is set to `'line'`, allow a maximum angle between adjacent characters.
+ * The expected value is in radians, and the default is 45° (`Math.PI / 4`).
+ * @property {number} [offsetX=0] Horizontal text offset in pixels. A positive will shift the text right.
+ * @property {number} [offsetY=0] Vertical text offset in pixels. A positive will shift the text down.
+ * @property {boolean} [overflow=false] For polygon labels or when `placement` is set to `'line'`, allow text to exceed
+ * the width of the polygon at the label position or the length of the path that it follows.
+ * @property {import("./TextPlacement.js").default|string} [placement='point'] Text placement.
+ * @property {number|import("../size.js").Size} [scale] Scale.
+ * @property {boolean} [rotateWithView=false] Whether to rotate the text with the view.
+ * @property {number} [rotation=0] Rotation in radians (positive rotation clockwise).
+ * @property {string} [text] Text content.
+ * @property {string} [textAlign] Text alignment. Possible values: 'left', 'right', 'center', 'end' or 'start'.
+ * Default is 'center' for `placement: 'point'`. For `placement: 'line'`, the default is to let the renderer choose a
+ * placement where `maxAngle` is not exceeded.
+ * @property {string} [textBaseline='middle'] Text base line. Possible values: 'bottom', 'top', 'middle', 'alphabetic',
+ * 'hanging', 'ideographic'.
+ * @property {import("./Fill.js").default} [fill] Fill style. If none is provided, we'll use a dark fill-style (#333).
+ * @property {import("./Stroke.js").default} [stroke] Stroke style.
+ * @property {import("./Fill.js").default} [backgroundFill] Fill style for the text background when `placement` is
+ * `'point'`. Default is no fill.
+ * @property {import("./Stroke.js").default} [backgroundStroke] Stroke style for the text background  when `placement`
+ * is `'point'`. Default is no stroke.
+ * @property {Array<number>} [padding=[0, 0, 0, 0]] Padding in pixels around the text for decluttering and background. The order of
+ * values in the array is `[top, right, bottom, left]`.
+ */
+
+/**
+ * @classdesc
+ * Set text style for vector features.
+ * @api
+ */
+
+var Text =
+/** @class */
+function () {
+  /**
+   * @param {Options} [opt_options] Options.
+   */
+  function Text(opt_options) {
+    var options = opt_options || {};
+    /**
+     * @private
+     * @type {string|undefined}
+     */
+
+    this.font_ = options.font;
+    /**
+     * @private
+     * @type {number|undefined}
+     */
+
+    this.rotation_ = options.rotation;
+    /**
+     * @private
+     * @type {boolean|undefined}
+     */
+
+    this.rotateWithView_ = options.rotateWithView;
+    /**
+     * @private
+     * @type {number|import("../size.js").Size|undefined}
+     */
+
+    this.scale_ = options.scale;
+    /**
+     * @private
+     * @type {import("../size.js").Size}
+     */
+
+    this.scaleArray_ = (0, _size.toSize)(options.scale !== undefined ? options.scale : 1);
+    /**
+     * @private
+     * @type {string|undefined}
+     */
+
+    this.text_ = options.text;
+    /**
+     * @private
+     * @type {string|undefined}
+     */
+
+    this.textAlign_ = options.textAlign;
+    /**
+     * @private
+     * @type {string|undefined}
+     */
+
+    this.textBaseline_ = options.textBaseline;
+    /**
+     * @private
+     * @type {import("./Fill.js").default}
+     */
+
+    this.fill_ = options.fill !== undefined ? options.fill : new _Fill.default({
+      color: DEFAULT_FILL_COLOR
+    });
+    /**
+     * @private
+     * @type {number}
+     */
+
+    this.maxAngle_ = options.maxAngle !== undefined ? options.maxAngle : Math.PI / 4;
+    /**
+     * @private
+     * @type {import("./TextPlacement.js").default|string}
+     */
+
+    this.placement_ = options.placement !== undefined ? options.placement : _TextPlacement.default.POINT;
+    /**
+     * @private
+     * @type {boolean}
+     */
+
+    this.overflow_ = !!options.overflow;
+    /**
+     * @private
+     * @type {import("./Stroke.js").default}
+     */
+
+    this.stroke_ = options.stroke !== undefined ? options.stroke : null;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    this.offsetX_ = options.offsetX !== undefined ? options.offsetX : 0;
+    /**
+     * @private
+     * @type {number}
+     */
+
+    this.offsetY_ = options.offsetY !== undefined ? options.offsetY : 0;
+    /**
+     * @private
+     * @type {import("./Fill.js").default}
+     */
+
+    this.backgroundFill_ = options.backgroundFill ? options.backgroundFill : null;
+    /**
+     * @private
+     * @type {import("./Stroke.js").default}
+     */
+
+    this.backgroundStroke_ = options.backgroundStroke ? options.backgroundStroke : null;
+    /**
+     * @private
+     * @type {Array<number>}
+     */
+
+    this.padding_ = options.padding === undefined ? null : options.padding;
+  }
+  /**
+   * Clones the style.
+   * @return {Text} The cloned style.
+   * @api
+   */
+
+
+  Text.prototype.clone = function () {
+    var scale = this.getScale();
+    return new Text({
+      font: this.getFont(),
+      placement: this.getPlacement(),
+      maxAngle: this.getMaxAngle(),
+      overflow: this.getOverflow(),
+      rotation: this.getRotation(),
+      rotateWithView: this.getRotateWithView(),
+      scale: Array.isArray(scale) ? scale.slice() : scale,
+      text: this.getText(),
+      textAlign: this.getTextAlign(),
+      textBaseline: this.getTextBaseline(),
+      fill: this.getFill() ? this.getFill().clone() : undefined,
+      stroke: this.getStroke() ? this.getStroke().clone() : undefined,
+      offsetX: this.getOffsetX(),
+      offsetY: this.getOffsetY(),
+      backgroundFill: this.getBackgroundFill() ? this.getBackgroundFill().clone() : undefined,
+      backgroundStroke: this.getBackgroundStroke() ? this.getBackgroundStroke().clone() : undefined,
+      padding: this.getPadding()
+    });
+  };
+  /**
+   * Get the `overflow` configuration.
+   * @return {boolean} Let text overflow the length of the path they follow.
+   * @api
+   */
+
+
+  Text.prototype.getOverflow = function () {
+    return this.overflow_;
+  };
+  /**
+   * Get the font name.
+   * @return {string|undefined} Font.
+   * @api
+   */
+
+
+  Text.prototype.getFont = function () {
+    return this.font_;
+  };
+  /**
+   * Get the maximum angle between adjacent characters.
+   * @return {number} Angle in radians.
+   * @api
+   */
+
+
+  Text.prototype.getMaxAngle = function () {
+    return this.maxAngle_;
+  };
+  /**
+   * Get the label placement.
+   * @return {import("./TextPlacement.js").default|string} Text placement.
+   * @api
+   */
+
+
+  Text.prototype.getPlacement = function () {
+    return this.placement_;
+  };
+  /**
+   * Get the x-offset for the text.
+   * @return {number} Horizontal text offset.
+   * @api
+   */
+
+
+  Text.prototype.getOffsetX = function () {
+    return this.offsetX_;
+  };
+  /**
+   * Get the y-offset for the text.
+   * @return {number} Vertical text offset.
+   * @api
+   */
+
+
+  Text.prototype.getOffsetY = function () {
+    return this.offsetY_;
+  };
+  /**
+   * Get the fill style for the text.
+   * @return {import("./Fill.js").default} Fill style.
+   * @api
+   */
+
+
+  Text.prototype.getFill = function () {
+    return this.fill_;
+  };
+  /**
+   * Determine whether the text rotates with the map.
+   * @return {boolean|undefined} Rotate with map.
+   * @api
+   */
+
+
+  Text.prototype.getRotateWithView = function () {
+    return this.rotateWithView_;
+  };
+  /**
+   * Get the text rotation.
+   * @return {number|undefined} Rotation.
+   * @api
+   */
+
+
+  Text.prototype.getRotation = function () {
+    return this.rotation_;
+  };
+  /**
+   * Get the text scale.
+   * @return {number|import("../size.js").Size|undefined} Scale.
+   * @api
+   */
+
+
+  Text.prototype.getScale = function () {
+    return this.scale_;
+  };
+  /**
+   * Get the symbolizer scale array.
+   * @return {import("../size.js").Size} Scale array.
+   */
+
+
+  Text.prototype.getScaleArray = function () {
+    return this.scaleArray_;
+  };
+  /**
+   * Get the stroke style for the text.
+   * @return {import("./Stroke.js").default} Stroke style.
+   * @api
+   */
+
+
+  Text.prototype.getStroke = function () {
+    return this.stroke_;
+  };
+  /**
+   * Get the text to be rendered.
+   * @return {string|undefined} Text.
+   * @api
+   */
+
+
+  Text.prototype.getText = function () {
+    return this.text_;
+  };
+  /**
+   * Get the text alignment.
+   * @return {string|undefined} Text align.
+   * @api
+   */
+
+
+  Text.prototype.getTextAlign = function () {
+    return this.textAlign_;
+  };
+  /**
+   * Get the text baseline.
+   * @return {string|undefined} Text baseline.
+   * @api
+   */
+
+
+  Text.prototype.getTextBaseline = function () {
+    return this.textBaseline_;
+  };
+  /**
+   * Get the background fill style for the text.
+   * @return {import("./Fill.js").default} Fill style.
+   * @api
+   */
+
+
+  Text.prototype.getBackgroundFill = function () {
+    return this.backgroundFill_;
+  };
+  /**
+   * Get the background stroke style for the text.
+   * @return {import("./Stroke.js").default} Stroke style.
+   * @api
+   */
+
+
+  Text.prototype.getBackgroundStroke = function () {
+    return this.backgroundStroke_;
+  };
+  /**
+   * Get the padding for the text.
+   * @return {Array<number>} Padding.
+   * @api
+   */
+
+
+  Text.prototype.getPadding = function () {
+    return this.padding_;
+  };
+  /**
+   * Set the `overflow` property.
+   *
+   * @param {boolean} overflow Let text overflow the path that it follows.
+   * @api
+   */
+
+
+  Text.prototype.setOverflow = function (overflow) {
+    this.overflow_ = overflow;
+  };
+  /**
+   * Set the font.
+   *
+   * @param {string|undefined} font Font.
+   * @api
+   */
+
+
+  Text.prototype.setFont = function (font) {
+    this.font_ = font;
+  };
+  /**
+   * Set the maximum angle between adjacent characters.
+   *
+   * @param {number} maxAngle Angle in radians.
+   * @api
+   */
+
+
+  Text.prototype.setMaxAngle = function (maxAngle) {
+    this.maxAngle_ = maxAngle;
+  };
+  /**
+   * Set the x offset.
+   *
+   * @param {number} offsetX Horizontal text offset.
+   * @api
+   */
+
+
+  Text.prototype.setOffsetX = function (offsetX) {
+    this.offsetX_ = offsetX;
+  };
+  /**
+   * Set the y offset.
+   *
+   * @param {number} offsetY Vertical text offset.
+   * @api
+   */
+
+
+  Text.prototype.setOffsetY = function (offsetY) {
+    this.offsetY_ = offsetY;
+  };
+  /**
+   * Set the text placement.
+   *
+   * @param {import("./TextPlacement.js").default|string} placement Placement.
+   * @api
+   */
+
+
+  Text.prototype.setPlacement = function (placement) {
+    this.placement_ = placement;
+  };
+  /**
+   * Set whether to rotate the text with the view.
+   *
+   * @param {boolean} rotateWithView Rotate with map.
+   * @api
+   */
+
+
+  Text.prototype.setRotateWithView = function (rotateWithView) {
+    this.rotateWithView_ = rotateWithView;
+  };
+  /**
+   * Set the fill.
+   *
+   * @param {import("./Fill.js").default} fill Fill style.
+   * @api
+   */
+
+
+  Text.prototype.setFill = function (fill) {
+    this.fill_ = fill;
+  };
+  /**
+   * Set the rotation.
+   *
+   * @param {number|undefined} rotation Rotation.
+   * @api
+   */
+
+
+  Text.prototype.setRotation = function (rotation) {
+    this.rotation_ = rotation;
+  };
+  /**
+   * Set the scale.
+   *
+   * @param {number|import("../size.js").Size|undefined} scale Scale.
+   * @api
+   */
+
+
+  Text.prototype.setScale = function (scale) {
+    this.scale_ = scale;
+    this.scaleArray_ = (0, _size.toSize)(scale !== undefined ? scale : 1);
+  };
+  /**
+   * Set the stroke.
+   *
+   * @param {import("./Stroke.js").default} stroke Stroke style.
+   * @api
+   */
+
+
+  Text.prototype.setStroke = function (stroke) {
+    this.stroke_ = stroke;
+  };
+  /**
+   * Set the text.
+   *
+   * @param {string|undefined} text Text.
+   * @api
+   */
+
+
+  Text.prototype.setText = function (text) {
+    this.text_ = text;
+  };
+  /**
+   * Set the text alignment.
+   *
+   * @param {string|undefined} textAlign Text align.
+   * @api
+   */
+
+
+  Text.prototype.setTextAlign = function (textAlign) {
+    this.textAlign_ = textAlign;
+  };
+  /**
+   * Set the text baseline.
+   *
+   * @param {string|undefined} textBaseline Text baseline.
+   * @api
+   */
+
+
+  Text.prototype.setTextBaseline = function (textBaseline) {
+    this.textBaseline_ = textBaseline;
+  };
+  /**
+   * Set the background fill.
+   *
+   * @param {import("./Fill.js").default} fill Fill style.
+   * @api
+   */
+
+
+  Text.prototype.setBackgroundFill = function (fill) {
+    this.backgroundFill_ = fill;
+  };
+  /**
+   * Set the background stroke.
+   *
+   * @param {import("./Stroke.js").default} stroke Stroke style.
+   * @api
+   */
+
+
+  Text.prototype.setBackgroundStroke = function (stroke) {
+    this.backgroundStroke_ = stroke;
+  };
+  /**
+   * Set the padding (`[top, right, bottom, left]`).
+   *
+   * @param {!Array<number>} padding Padding.
+   * @api
+   */
+
+
+  Text.prototype.setPadding = function (padding) {
+    this.padding_ = padding;
+  };
+
+  return Text;
+}();
+
+var _default = Text;
+exports.default = _default;
+},{"./Fill.js":"../node_modules/ol/style/Fill.js","./TextPlacement.js":"../node_modules/ol/style/TextPlacement.js","../size.js":"../node_modules/ol/size.js"}],"../node_modules/ol/style.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -31707,7 +33656,428 @@ function (_super) {
 
 var _default = VectorLayer;
 exports.default = _default;
-},{"./BaseVector.js":"../node_modules/ol/layer/BaseVector.js","../renderer/canvas/VectorLayer.js":"../node_modules/ol/renderer/canvas/VectorLayer.js"}],"../node_modules/ol/structs/RBush.js":[function(require,module,exports) {
+},{"./BaseVector.js":"../node_modules/ol/layer/BaseVector.js","../renderer/canvas/VectorLayer.js":"../node_modules/ol/renderer/canvas/VectorLayer.js"}],"../node_modules/ol/CollectionEventType.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+/**
+ * @module ol/CollectionEventType
+ */
+
+/**
+ * @enum {string}
+ */
+var _default = {
+  /**
+   * Triggered when an item is added to the collection.
+   * @event module:ol/Collection.CollectionEvent#add
+   * @api
+   */
+  ADD: 'add',
+
+  /**
+   * Triggered when an item is removed from the collection.
+   * @event module:ol/Collection.CollectionEvent#remove
+   * @api
+   */
+  REMOVE: 'remove'
+};
+exports.default = _default;
+},{}],"../node_modules/ol/Collection.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.CollectionEvent = void 0;
+
+var _AssertionError = _interopRequireDefault(require("./AssertionError.js"));
+
+var _Object = _interopRequireDefault(require("./Object.js"));
+
+var _CollectionEventType = _interopRequireDefault(require("./CollectionEventType.js"));
+
+var _Event = _interopRequireDefault(require("./events/Event.js"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/Collection
+ */
+
+
+/**
+ * @enum {string}
+ * @private
+ */
+var Property = {
+  LENGTH: 'length'
+};
+/**
+ * @classdesc
+ * Events emitted by {@link module:ol/Collection~Collection} instances are instances of this
+ * type.
+ */
+
+var CollectionEvent =
+/** @class */
+function (_super) {
+  __extends(CollectionEvent, _super);
+  /**
+   * @param {import("./CollectionEventType.js").default} type Type.
+   * @param {*} [opt_element] Element.
+   * @param {number} [opt_index] The index of the added or removed element.
+   */
+
+
+  function CollectionEvent(type, opt_element, opt_index) {
+    var _this = _super.call(this, type) || this;
+    /**
+     * The element that is added to or removed from the collection.
+     * @type {*}
+     * @api
+     */
+
+
+    _this.element = opt_element;
+    /**
+     * The index of the added or removed element.
+     * @type {number}
+     * @api
+     */
+
+    _this.index = opt_index;
+    return _this;
+  }
+
+  return CollectionEvent;
+}(_Event.default);
+
+exports.CollectionEvent = CollectionEvent;
+
+/***
+ * @template Return
+ * @typedef {import("./Observable").OnSignature<import("./Observable").EventTypes, import("./events/Event.js").default, Return> &
+ *   import("./Observable").OnSignature<import("./ObjectEventType").Types|'change:length', import("./Object").ObjectEvent, Return> &
+ *   import("./Observable").OnSignature<'add'|'remove', CollectionEvent, Return> &
+ *   import("./Observable").CombinedOnSignature<import("./Observable").EventTypes|import("./ObjectEventType").Types|
+ *     'change:length'|'add'|'remove',Return>} CollectionOnSignature
+ */
+
+/**
+ * @typedef {Object} Options
+ * @property {boolean} [unique=false] Disallow the same item from being added to
+ * the collection twice.
+ */
+
+/**
+ * @classdesc
+ * An expanded version of standard JS Array, adding convenience methods for
+ * manipulation. Add and remove changes to the Collection trigger a Collection
+ * event. Note that this does not cover changes to the objects _within_ the
+ * Collection; they trigger events on the appropriate object, not on the
+ * Collection as a whole.
+ *
+ * @fires CollectionEvent
+ *
+ * @template T
+ * @api
+ */
+var Collection =
+/** @class */
+function (_super) {
+  __extends(Collection, _super);
+  /**
+   * @param {Array<T>} [opt_array] Array.
+   * @param {Options} [opt_options] Collection options.
+   */
+
+
+  function Collection(opt_array, opt_options) {
+    var _this = _super.call(this) || this;
+    /***
+     * @type {CollectionOnSignature<import("./events").EventsKey>}
+     */
+
+
+    _this.on;
+    /***
+     * @type {CollectionOnSignature<import("./events").EventsKey>}
+     */
+
+    _this.once;
+    /***
+     * @type {CollectionOnSignature<void>}
+     */
+
+    _this.un;
+    var options = opt_options || {};
+    /**
+     * @private
+     * @type {boolean}
+     */
+
+    _this.unique_ = !!options.unique;
+    /**
+     * @private
+     * @type {!Array<T>}
+     */
+
+    _this.array_ = opt_array ? opt_array : [];
+
+    if (_this.unique_) {
+      for (var i = 0, ii = _this.array_.length; i < ii; ++i) {
+        _this.assertUnique_(_this.array_[i], i);
+      }
+    }
+
+    _this.updateLength_();
+
+    return _this;
+  }
+  /**
+   * Remove all elements from the collection.
+   * @api
+   */
+
+
+  Collection.prototype.clear = function () {
+    while (this.getLength() > 0) {
+      this.pop();
+    }
+  };
+  /**
+   * Add elements to the collection.  This pushes each item in the provided array
+   * to the end of the collection.
+   * @param {!Array<T>} arr Array.
+   * @return {Collection<T>} This collection.
+   * @api
+   */
+
+
+  Collection.prototype.extend = function (arr) {
+    for (var i = 0, ii = arr.length; i < ii; ++i) {
+      this.push(arr[i]);
+    }
+
+    return this;
+  };
+  /**
+   * Iterate over each element, calling the provided callback.
+   * @param {function(T, number, Array<T>): *} f The function to call
+   *     for every element. This function takes 3 arguments (the element, the
+   *     index and the array). The return value is ignored.
+   * @api
+   */
+
+
+  Collection.prototype.forEach = function (f) {
+    var array = this.array_;
+
+    for (var i = 0, ii = array.length; i < ii; ++i) {
+      f(array[i], i, array);
+    }
+  };
+  /**
+   * Get a reference to the underlying Array object. Warning: if the array
+   * is mutated, no events will be dispatched by the collection, and the
+   * collection's "length" property won't be in sync with the actual length
+   * of the array.
+   * @return {!Array<T>} Array.
+   * @api
+   */
+
+
+  Collection.prototype.getArray = function () {
+    return this.array_;
+  };
+  /**
+   * Get the element at the provided index.
+   * @param {number} index Index.
+   * @return {T} Element.
+   * @api
+   */
+
+
+  Collection.prototype.item = function (index) {
+    return this.array_[index];
+  };
+  /**
+   * Get the length of this collection.
+   * @return {number} The length of the array.
+   * @observable
+   * @api
+   */
+
+
+  Collection.prototype.getLength = function () {
+    return this.get(Property.LENGTH);
+  };
+  /**
+   * Insert an element at the provided index.
+   * @param {number} index Index.
+   * @param {T} elem Element.
+   * @api
+   */
+
+
+  Collection.prototype.insertAt = function (index, elem) {
+    if (this.unique_) {
+      this.assertUnique_(elem);
+    }
+
+    this.array_.splice(index, 0, elem);
+    this.updateLength_();
+    this.dispatchEvent(new CollectionEvent(_CollectionEventType.default.ADD, elem, index));
+  };
+  /**
+   * Remove the last element of the collection and return it.
+   * Return `undefined` if the collection is empty.
+   * @return {T|undefined} Element.
+   * @api
+   */
+
+
+  Collection.prototype.pop = function () {
+    return this.removeAt(this.getLength() - 1);
+  };
+  /**
+   * Insert the provided element at the end of the collection.
+   * @param {T} elem Element.
+   * @return {number} New length of the collection.
+   * @api
+   */
+
+
+  Collection.prototype.push = function (elem) {
+    if (this.unique_) {
+      this.assertUnique_(elem);
+    }
+
+    var n = this.getLength();
+    this.insertAt(n, elem);
+    return this.getLength();
+  };
+  /**
+   * Remove the first occurrence of an element from the collection.
+   * @param {T} elem Element.
+   * @return {T|undefined} The removed element or undefined if none found.
+   * @api
+   */
+
+
+  Collection.prototype.remove = function (elem) {
+    var arr = this.array_;
+
+    for (var i = 0, ii = arr.length; i < ii; ++i) {
+      if (arr[i] === elem) {
+        return this.removeAt(i);
+      }
+    }
+
+    return undefined;
+  };
+  /**
+   * Remove the element at the provided index and return it.
+   * Return `undefined` if the collection does not contain this index.
+   * @param {number} index Index.
+   * @return {T|undefined} Value.
+   * @api
+   */
+
+
+  Collection.prototype.removeAt = function (index) {
+    var prev = this.array_[index];
+    this.array_.splice(index, 1);
+    this.updateLength_();
+    this.dispatchEvent(new CollectionEvent(_CollectionEventType.default.REMOVE, prev, index));
+    return prev;
+  };
+  /**
+   * Set the element at the provided index.
+   * @param {number} index Index.
+   * @param {T} elem Element.
+   * @api
+   */
+
+
+  Collection.prototype.setAt = function (index, elem) {
+    var n = this.getLength();
+
+    if (index < n) {
+      if (this.unique_) {
+        this.assertUnique_(elem, index);
+      }
+
+      var prev = this.array_[index];
+      this.array_[index] = elem;
+      this.dispatchEvent(new CollectionEvent(_CollectionEventType.default.REMOVE, prev, index));
+      this.dispatchEvent(new CollectionEvent(_CollectionEventType.default.ADD, elem, index));
+    } else {
+      for (var j = n; j < index; ++j) {
+        this.insertAt(j, undefined);
+      }
+
+      this.insertAt(index, elem);
+    }
+  };
+  /**
+   * @private
+   */
+
+
+  Collection.prototype.updateLength_ = function () {
+    this.set(Property.LENGTH, this.array_.length);
+  };
+  /**
+   * @private
+   * @param {T} elem Element.
+   * @param {number} [opt_except] Optional index to ignore.
+   */
+
+
+  Collection.prototype.assertUnique_ = function (elem, opt_except) {
+    for (var i = 0, ii = this.array_.length; i < ii; ++i) {
+      if (this.array_[i] === elem && i !== opt_except) {
+        throw new _AssertionError.default(58);
+      }
+    }
+  };
+
+  return Collection;
+}(_Object.default);
+
+var _default = Collection;
+exports.default = _default;
+},{"./AssertionError.js":"../node_modules/ol/AssertionError.js","./Object.js":"../node_modules/ol/Object.js","./CollectionEventType.js":"../node_modules/ol/CollectionEventType.js","./events/Event.js":"../node_modules/ol/events/Event.js"}],"../node_modules/ol/structs/RBush.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -32110,29 +34480,7 @@ function tile(tileGrid) {
     }
   );
 }
-},{"./proj.js":"../node_modules/ol/proj.js"}],"../node_modules/ol/format/FormatType.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-/**
- * @module ol/format/FormatType
- */
-
-/**
- * @enum {string}
- */
-var _default = {
-  ARRAY_BUFFER: 'arraybuffer',
-  JSON: 'json',
-  TEXT: 'text',
-  XML: 'xml'
-};
-exports.default = _default;
-},{}],"../node_modules/ol/featureloader.js":[function(require,module,exports) {
+},{"./proj.js":"../node_modules/ol/proj.js"}],"../node_modules/ol/featureloader.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -33510,7 +35858,493 @@ function (_super) {
 
 var _default = VectorSource;
 exports.default = _default;
-},{"../Collection.js":"../node_modules/ol/Collection.js","../CollectionEventType.js":"../node_modules/ol/CollectionEventType.js","../events/Event.js":"../node_modules/ol/events/Event.js","../events/EventType.js":"../node_modules/ol/events/EventType.js","../ObjectEventType.js":"../node_modules/ol/ObjectEventType.js","../structs/RBush.js":"../node_modules/ol/structs/RBush.js","./Source.js":"../node_modules/ol/source/Source.js","./State.js":"../node_modules/ol/source/State.js","./VectorEventType.js":"../node_modules/ol/source/VectorEventType.js","../functions.js":"../node_modules/ol/functions.js","../loadingstrategy.js":"../node_modules/ol/loadingstrategy.js","../asserts.js":"../node_modules/ol/asserts.js","../extent.js":"../node_modules/ol/extent.js","../array.js":"../node_modules/ol/array.js","../util.js":"../node_modules/ol/util.js","../obj.js":"../node_modules/ol/obj.js","../events.js":"../node_modules/ol/events.js","../featureloader.js":"../node_modules/ol/featureloader.js"}],"../node_modules/ol/render.js":[function(require,module,exports) {
+},{"../Collection.js":"../node_modules/ol/Collection.js","../CollectionEventType.js":"../node_modules/ol/CollectionEventType.js","../events/Event.js":"../node_modules/ol/events/Event.js","../events/EventType.js":"../node_modules/ol/events/EventType.js","../ObjectEventType.js":"../node_modules/ol/ObjectEventType.js","../structs/RBush.js":"../node_modules/ol/structs/RBush.js","./Source.js":"../node_modules/ol/source/Source.js","./State.js":"../node_modules/ol/source/State.js","./VectorEventType.js":"../node_modules/ol/source/VectorEventType.js","../functions.js":"../node_modules/ol/functions.js","../loadingstrategy.js":"../node_modules/ol/loadingstrategy.js","../asserts.js":"../node_modules/ol/asserts.js","../extent.js":"../node_modules/ol/extent.js","../array.js":"../node_modules/ol/array.js","../util.js":"../node_modules/ol/util.js","../obj.js":"../node_modules/ol/obj.js","../events.js":"../node_modules/ol/events.js","../featureloader.js":"../node_modules/ol/featureloader.js"}],"../node_modules/ol/Geolocation.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _Event = _interopRequireDefault(require("./events/Event.js"));
+
+var _Object = _interopRequireDefault(require("./Object.js"));
+
+var _EventType = _interopRequireDefault(require("./events/EventType.js"));
+
+var _Polygon = require("./geom/Polygon.js");
+
+var _proj = require("./proj.js");
+
+var _math = require("./math.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var __extends = void 0 && (void 0).__extends || function () {
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+/**
+ * @module ol/Geolocation
+ */
+
+
+/**
+ * @enum {string}
+ */
+var Property = {
+  ACCURACY: 'accuracy',
+  ACCURACY_GEOMETRY: 'accuracyGeometry',
+  ALTITUDE: 'altitude',
+  ALTITUDE_ACCURACY: 'altitudeAccuracy',
+  HEADING: 'heading',
+  POSITION: 'position',
+  PROJECTION: 'projection',
+  SPEED: 'speed',
+  TRACKING: 'tracking',
+  TRACKING_OPTIONS: 'trackingOptions'
+};
+/**
+ * @classdesc
+ * Events emitted on Geolocation error.
+ */
+
+var GeolocationError =
+/** @class */
+function (_super) {
+  __extends(GeolocationError, _super);
+  /**
+   * @param {GeolocationPositionError} error error object.
+   */
+
+
+  function GeolocationError(error) {
+    var _this = _super.call(this, _EventType.default.ERROR) || this;
+    /**
+     * @type {number}
+     */
+
+
+    _this.code = error.code;
+    /**
+     * @type {string}
+     */
+
+    _this.message = error.message;
+    return _this;
+  }
+
+  return GeolocationError;
+}(_Event.default);
+/**
+ * @typedef {Object} Options
+ * @property {boolean} [tracking=false] Start Tracking right after
+ * instantiation.
+ * @property {PositionOptions} [trackingOptions] Tracking options.
+ * See https://www.w3.org/TR/geolocation-API/#position_options_interface.
+ * @property {import("./proj.js").ProjectionLike} [projection] The projection the position
+ * is reported in.
+ */
+
+/**
+ * @typedef {import("./ObjectEventType").Types|'change:accuracy'|'change:accuracyGeometry'|'change:altitude'|
+ *    'change:altitudeAccuracy'|'change:heading'|'change:position'|'change:projection'|'change:speed'|'change:tracking'|
+ *    'change:trackingOptions'} GeolocationObjectEventTypes
+ */
+
+/***
+ * @template Return
+ * @typedef {import("./Observable").OnSignature<import("./Observable").EventTypes, import("./events/Event.js").default, Return> &
+ *   import("./Observable").OnSignature<GeolocationObjectEventTypes, import("./Object").ObjectEvent, Return> &
+ *   import("./Observable").OnSignature<'error', GeolocationError, Return> &
+ *   import("./Observable").CombinedOnSignature<import("./Observable").EventTypes|GeolocationObjectEventTypes|
+ *     'error', Return>} GeolocationOnSignature
+ */
+
+/**
+ * @classdesc
+ * Helper class for providing HTML5 Geolocation capabilities.
+ * The [Geolocation API](https://www.w3.org/TR/geolocation-API/)
+ * is used to locate a user's position.
+ *
+ * To get notified of position changes, register a listener for the generic
+ * `change` event on your instance of {@link module:ol/Geolocation~Geolocation}.
+ *
+ * Example:
+ *
+ *     var geolocation = new Geolocation({
+ *       // take the projection to use from the map's view
+ *       projection: view.getProjection()
+ *     });
+ *     // listen to changes in position
+ *     geolocation.on('change', function(evt) {
+ *       window.console.log(geolocation.getPosition());
+ *     });
+ *
+ * @fires module:ol/events/Event~BaseEvent#event:error
+ * @api
+ */
+
+
+var Geolocation =
+/** @class */
+function (_super) {
+  __extends(Geolocation, _super);
+  /**
+   * @param {Options} [opt_options] Options.
+   */
+
+
+  function Geolocation(opt_options) {
+    var _this = _super.call(this) || this;
+    /***
+     * @type {GeolocationOnSignature<import("./events").EventsKey>}
+     */
+
+
+    _this.on;
+    /***
+     * @type {GeolocationOnSignature<import("./events").EventsKey>}
+     */
+
+    _this.once;
+    /***
+     * @type {GeolocationOnSignature<void>}
+     */
+
+    _this.un;
+    var options = opt_options || {};
+    /**
+     * The unprojected (EPSG:4326) device position.
+     * @private
+     * @type {?import("./coordinate.js").Coordinate}
+     */
+
+    _this.position_ = null;
+    /**
+     * @private
+     * @type {import("./proj.js").TransformFunction}
+     */
+
+    _this.transform_ = _proj.identityTransform;
+    /**
+     * @private
+     * @type {number|undefined}
+     */
+
+    _this.watchId_ = undefined;
+
+    _this.addChangeListener(Property.PROJECTION, _this.handleProjectionChanged_);
+
+    _this.addChangeListener(Property.TRACKING, _this.handleTrackingChanged_);
+
+    if (options.projection !== undefined) {
+      _this.setProjection(options.projection);
+    }
+
+    if (options.trackingOptions !== undefined) {
+      _this.setTrackingOptions(options.trackingOptions);
+    }
+
+    _this.setTracking(options.tracking !== undefined ? options.tracking : false);
+
+    return _this;
+  }
+  /**
+   * Clean up.
+   */
+
+
+  Geolocation.prototype.disposeInternal = function () {
+    this.setTracking(false);
+
+    _super.prototype.disposeInternal.call(this);
+  };
+  /**
+   * @private
+   */
+
+
+  Geolocation.prototype.handleProjectionChanged_ = function () {
+    var projection = this.getProjection();
+
+    if (projection) {
+      this.transform_ = (0, _proj.getTransformFromProjections)((0, _proj.get)('EPSG:4326'), projection);
+
+      if (this.position_) {
+        this.set(Property.POSITION, this.transform_(this.position_));
+      }
+    }
+  };
+  /**
+   * @private
+   */
+
+
+  Geolocation.prototype.handleTrackingChanged_ = function () {
+    if ('geolocation' in navigator) {
+      var tracking = this.getTracking();
+
+      if (tracking && this.watchId_ === undefined) {
+        this.watchId_ = navigator.geolocation.watchPosition(this.positionChange_.bind(this), this.positionError_.bind(this), this.getTrackingOptions());
+      } else if (!tracking && this.watchId_ !== undefined) {
+        navigator.geolocation.clearWatch(this.watchId_);
+        this.watchId_ = undefined;
+      }
+    }
+  };
+  /**
+   * @private
+   * @param {GeolocationPosition} position position event.
+   */
+
+
+  Geolocation.prototype.positionChange_ = function (position) {
+    var coords = position.coords;
+    this.set(Property.ACCURACY, coords.accuracy);
+    this.set(Property.ALTITUDE, coords.altitude === null ? undefined : coords.altitude);
+    this.set(Property.ALTITUDE_ACCURACY, coords.altitudeAccuracy === null ? undefined : coords.altitudeAccuracy);
+    this.set(Property.HEADING, coords.heading === null ? undefined : (0, _math.toRadians)(coords.heading));
+
+    if (!this.position_) {
+      this.position_ = [coords.longitude, coords.latitude];
+    } else {
+      this.position_[0] = coords.longitude;
+      this.position_[1] = coords.latitude;
+    }
+
+    var projectedPosition = this.transform_(this.position_);
+    this.set(Property.POSITION, projectedPosition);
+    this.set(Property.SPEED, coords.speed === null ? undefined : coords.speed);
+    var geometry = (0, _Polygon.circular)(this.position_, coords.accuracy);
+    geometry.applyTransform(this.transform_);
+    this.set(Property.ACCURACY_GEOMETRY, geometry);
+    this.changed();
+  };
+  /**
+   * @private
+   * @param {GeolocationPositionError} error error object.
+   */
+
+
+  Geolocation.prototype.positionError_ = function (error) {
+    this.dispatchEvent(new GeolocationError(error));
+  };
+  /**
+   * Get the accuracy of the position in meters.
+   * @return {number|undefined} The accuracy of the position measurement in
+   *     meters.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getAccuracy = function () {
+    return (
+      /** @type {number|undefined} */
+      this.get(Property.ACCURACY)
+    );
+  };
+  /**
+   * Get a geometry of the position accuracy.
+   * @return {?import("./geom/Polygon.js").default} A geometry of the position accuracy.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getAccuracyGeometry = function () {
+    return (
+      /** @type {?import("./geom/Polygon.js").default} */
+      this.get(Property.ACCURACY_GEOMETRY) || null
+    );
+  };
+  /**
+   * Get the altitude associated with the position.
+   * @return {number|undefined} The altitude of the position in meters above mean
+   *     sea level.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getAltitude = function () {
+    return (
+      /** @type {number|undefined} */
+      this.get(Property.ALTITUDE)
+    );
+  };
+  /**
+   * Get the altitude accuracy of the position.
+   * @return {number|undefined} The accuracy of the altitude measurement in
+   *     meters.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getAltitudeAccuracy = function () {
+    return (
+      /** @type {number|undefined} */
+      this.get(Property.ALTITUDE_ACCURACY)
+    );
+  };
+  /**
+   * Get the heading as radians clockwise from North.
+   * Note: depending on the browser, the heading is only defined if the `enableHighAccuracy`
+   * is set to `true` in the tracking options.
+   * @return {number|undefined} The heading of the device in radians from north.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getHeading = function () {
+    return (
+      /** @type {number|undefined} */
+      this.get(Property.HEADING)
+    );
+  };
+  /**
+   * Get the position of the device.
+   * @return {import("./coordinate.js").Coordinate|undefined} The current position of the device reported
+   *     in the current projection.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getPosition = function () {
+    return (
+      /** @type {import("./coordinate.js").Coordinate|undefined} */
+      this.get(Property.POSITION)
+    );
+  };
+  /**
+   * Get the projection associated with the position.
+   * @return {import("./proj/Projection.js").default|undefined} The projection the position is
+   *     reported in.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getProjection = function () {
+    return (
+      /** @type {import("./proj/Projection.js").default|undefined} */
+      this.get(Property.PROJECTION)
+    );
+  };
+  /**
+   * Get the speed in meters per second.
+   * @return {number|undefined} The instantaneous speed of the device in meters
+   *     per second.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getSpeed = function () {
+    return (
+      /** @type {number|undefined} */
+      this.get(Property.SPEED)
+    );
+  };
+  /**
+   * Determine if the device location is being tracked.
+   * @return {boolean} The device location is being tracked.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getTracking = function () {
+    return (
+      /** @type {boolean} */
+      this.get(Property.TRACKING)
+    );
+  };
+  /**
+   * Get the tracking options.
+   * See https://www.w3.org/TR/geolocation-API/#position-options.
+   * @return {PositionOptions|undefined} PositionOptions as defined by
+   *     the [HTML5 Geolocation spec
+   *     ](https://www.w3.org/TR/geolocation-API/#position_options_interface).
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.getTrackingOptions = function () {
+    return (
+      /** @type {PositionOptions|undefined} */
+      this.get(Property.TRACKING_OPTIONS)
+    );
+  };
+  /**
+   * Set the projection to use for transforming the coordinates.
+   * @param {import("./proj.js").ProjectionLike} projection The projection the position is
+   *     reported in.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.setProjection = function (projection) {
+    this.set(Property.PROJECTION, (0, _proj.get)(projection));
+  };
+  /**
+   * Enable or disable tracking.
+   * @param {boolean} tracking Enable tracking.
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.setTracking = function (tracking) {
+    this.set(Property.TRACKING, tracking);
+  };
+  /**
+   * Set the tracking options.
+   * See http://www.w3.org/TR/geolocation-API/#position-options.
+   * @param {PositionOptions} options PositionOptions as defined by the
+   *     [HTML5 Geolocation spec
+   *     ](http://www.w3.org/TR/geolocation-API/#position_options_interface).
+   * @observable
+   * @api
+   */
+
+
+  Geolocation.prototype.setTrackingOptions = function (options) {
+    this.set(Property.TRACKING_OPTIONS, options);
+  };
+
+  return Geolocation;
+}(_Object.default);
+
+var _default = Geolocation;
+exports.default = _default;
+},{"./events/Event.js":"../node_modules/ol/events/Event.js","./Object.js":"../node_modules/ol/Object.js","./events/EventType.js":"../node_modules/ol/events/EventType.js","./geom/Polygon.js":"../node_modules/ol/geom/Polygon.js","./proj.js":"../node_modules/ol/proj.js","./math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/render.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -50227,1139 +53061,7 @@ function (_super) {
 Circle.prototype.transform;
 var _default = Circle;
 exports.default = _default;
-},{"./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","./flat/transform.js":"../node_modules/ol/geom/flat/transform.js"}],"../node_modules/ol/geom/MultiLineString.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
-
-var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
-
-var _LineString = _interopRequireDefault(require("./LineString.js"));
-
-var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
-
-var _closest = require("./flat/closest.js");
-
-var _extent = require("../extent.js");
-
-var _deflate = require("./flat/deflate.js");
-
-var _simplify = require("./flat/simplify.js");
-
-var _array = require("../array.js");
-
-var _inflate = require("./flat/inflate.js");
-
-var _interpolate = require("./flat/interpolate.js");
-
-var _intersectsextent = require("./flat/intersectsextent.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/MultiLineString
- */
-
-
-/**
- * @classdesc
- * Multi-linestring geometry.
- *
- * @api
- */
-var MultiLineString =
-/** @class */
-function (_super) {
-  __extends(MultiLineString, _super);
-  /**
-   * @param {Array<Array<import("../coordinate.js").Coordinate>|LineString>|Array<number>} coordinates
-   *     Coordinates or LineString geometries. (For internal use, flat coordinates in
-   *     combination with `opt_layout` and `opt_ends` are also accepted.)
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @param {Array<number>} [opt_ends] Flat coordinate ends for internal use.
-   */
-
-
-  function MultiLineString(coordinates, opt_layout, opt_ends) {
-    var _this = _super.call(this) || this;
-    /**
-     * @type {Array<number>}
-     * @private
-     */
-
-
-    _this.ends_ = [];
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDelta_ = -1;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDeltaRevision_ = -1;
-
-    if (Array.isArray(coordinates[0])) {
-      _this.setCoordinates(
-      /** @type {Array<Array<import("../coordinate.js").Coordinate>>} */
-      coordinates, opt_layout);
-    } else if (opt_layout !== undefined && opt_ends) {
-      _this.setFlatCoordinates(opt_layout,
-      /** @type {Array<number>} */
-      coordinates);
-
-      _this.ends_ = opt_ends;
-    } else {
-      var layout = _this.getLayout();
-
-      var lineStrings =
-      /** @type {Array<LineString>} */
-      coordinates;
-      var flatCoordinates = [];
-      var ends = [];
-
-      for (var i = 0, ii = lineStrings.length; i < ii; ++i) {
-        var lineString = lineStrings[i];
-
-        if (i === 0) {
-          layout = lineString.getLayout();
-        }
-
-        (0, _array.extend)(flatCoordinates, lineString.getFlatCoordinates());
-        ends.push(flatCoordinates.length);
-      }
-
-      _this.setFlatCoordinates(layout, flatCoordinates);
-
-      _this.ends_ = ends;
-    }
-
-    return _this;
-  }
-  /**
-   * Append the passed linestring to the multilinestring.
-   * @param {LineString} lineString LineString.
-   * @api
-   */
-
-
-  MultiLineString.prototype.appendLineString = function (lineString) {
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = lineString.getFlatCoordinates().slice();
-    } else {
-      (0, _array.extend)(this.flatCoordinates, lineString.getFlatCoordinates().slice());
-    }
-
-    this.ends_.push(this.flatCoordinates.length);
-    this.changed();
-  };
-  /**
-   * Make a complete copy of the geometry.
-   * @return {!MultiLineString} Clone.
-   * @api
-   */
-
-
-  MultiLineString.prototype.clone = function () {
-    var multiLineString = new MultiLineString(this.flatCoordinates.slice(), this.layout, this.ends_.slice());
-    multiLineString.applyProperties(this);
-    return multiLineString;
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
-   * @param {number} minSquaredDistance Minimum squared distance.
-   * @return {number} Minimum squared distance.
-   */
-
-
-  MultiLineString.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
-    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
-      return minSquaredDistance;
-    }
-
-    if (this.maxDeltaRevision_ != this.getRevision()) {
-      this.maxDelta_ = Math.sqrt((0, _closest.arrayMaxSquaredDelta)(this.flatCoordinates, 0, this.ends_, this.stride, 0));
-      this.maxDeltaRevision_ = this.getRevision();
-    }
-
-    return (0, _closest.assignClosestArrayPoint)(this.flatCoordinates, 0, this.ends_, this.stride, this.maxDelta_, false, x, y, closestPoint, minSquaredDistance);
-  };
-  /**
-   * Returns the coordinate at `m` using linear interpolation, or `null` if no
-   * such coordinate exists.
-   *
-   * `opt_extrapolate` controls extrapolation beyond the range of Ms in the
-   * MultiLineString. If `opt_extrapolate` is `true` then Ms less than the first
-   * M will return the first coordinate and Ms greater than the last M will
-   * return the last coordinate.
-   *
-   * `opt_interpolate` controls interpolation between consecutive LineStrings
-   * within the MultiLineString. If `opt_interpolate` is `true` the coordinates
-   * will be linearly interpolated between the last coordinate of one LineString
-   * and the first coordinate of the next LineString.  If `opt_interpolate` is
-   * `false` then the function will return `null` for Ms falling between
-   * LineStrings.
-   *
-   * @param {number} m M.
-   * @param {boolean} [opt_extrapolate] Extrapolate. Default is `false`.
-   * @param {boolean} [opt_interpolate] Interpolate. Default is `false`.
-   * @return {import("../coordinate.js").Coordinate} Coordinate.
-   * @api
-   */
-
-
-  MultiLineString.prototype.getCoordinateAtM = function (m, opt_extrapolate, opt_interpolate) {
-    if (this.layout != _GeometryLayout.default.XYM && this.layout != _GeometryLayout.default.XYZM || this.flatCoordinates.length === 0) {
-      return null;
-    }
-
-    var extrapolate = opt_extrapolate !== undefined ? opt_extrapolate : false;
-    var interpolate = opt_interpolate !== undefined ? opt_interpolate : false;
-    return (0, _interpolate.lineStringsCoordinateAtM)(this.flatCoordinates, 0, this.ends_, this.stride, m, extrapolate, interpolate);
-  };
-  /**
-   * Return the coordinates of the multilinestring.
-   * @return {Array<Array<import("../coordinate.js").Coordinate>>} Coordinates.
-   * @api
-   */
-
-
-  MultiLineString.prototype.getCoordinates = function () {
-    return (0, _inflate.inflateCoordinatesArray)(this.flatCoordinates, 0, this.ends_, this.stride);
-  };
-  /**
-   * @return {Array<number>} Ends.
-   */
-
-
-  MultiLineString.prototype.getEnds = function () {
-    return this.ends_;
-  };
-  /**
-   * Return the linestring at the specified index.
-   * @param {number} index Index.
-   * @return {LineString} LineString.
-   * @api
-   */
-
-
-  MultiLineString.prototype.getLineString = function (index) {
-    if (index < 0 || this.ends_.length <= index) {
-      return null;
-    }
-
-    return new _LineString.default(this.flatCoordinates.slice(index === 0 ? 0 : this.ends_[index - 1], this.ends_[index]), this.layout);
-  };
-  /**
-   * Return the linestrings of this multilinestring.
-   * @return {Array<LineString>} LineStrings.
-   * @api
-   */
-
-
-  MultiLineString.prototype.getLineStrings = function () {
-    var flatCoordinates = this.flatCoordinates;
-    var ends = this.ends_;
-    var layout = this.layout;
-    /** @type {Array<LineString>} */
-
-    var lineStrings = [];
-    var offset = 0;
-
-    for (var i = 0, ii = ends.length; i < ii; ++i) {
-      var end = ends[i];
-      var lineString = new _LineString.default(flatCoordinates.slice(offset, end), layout);
-      lineStrings.push(lineString);
-      offset = end;
-    }
-
-    return lineStrings;
-  };
-  /**
-   * @return {Array<number>} Flat midpoints.
-   */
-
-
-  MultiLineString.prototype.getFlatMidpoints = function () {
-    var midpoints = [];
-    var flatCoordinates = this.flatCoordinates;
-    var offset = 0;
-    var ends = this.ends_;
-    var stride = this.stride;
-
-    for (var i = 0, ii = ends.length; i < ii; ++i) {
-      var end = ends[i];
-      var midpoint = (0, _interpolate.interpolatePoint)(flatCoordinates, offset, end, stride, 0.5);
-      (0, _array.extend)(midpoints, midpoint);
-      offset = end;
-    }
-
-    return midpoints;
-  };
-  /**
-   * @param {number} squaredTolerance Squared tolerance.
-   * @return {MultiLineString} Simplified MultiLineString.
-   * @protected
-   */
-
-
-  MultiLineString.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
-    var simplifiedFlatCoordinates = [];
-    var simplifiedEnds = [];
-    simplifiedFlatCoordinates.length = (0, _simplify.douglasPeuckerArray)(this.flatCoordinates, 0, this.ends_, this.stride, squaredTolerance, simplifiedFlatCoordinates, 0, simplifiedEnds);
-    return new MultiLineString(simplifiedFlatCoordinates, _GeometryLayout.default.XY, simplifiedEnds);
-  };
-  /**
-   * Get the type of this geometry.
-   * @return {import("./GeometryType.js").default} Geometry type.
-   * @api
-   */
-
-
-  MultiLineString.prototype.getType = function () {
-    return _GeometryType.default.MULTI_LINE_STRING;
-  };
-  /**
-   * Test if the geometry and the passed extent intersect.
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @return {boolean} `true` if the geometry and the extent intersect.
-   * @api
-   */
-
-
-  MultiLineString.prototype.intersectsExtent = function (extent) {
-    return (0, _intersectsextent.intersectsLineStringArray)(this.flatCoordinates, 0, this.ends_, this.stride, extent);
-  };
-  /**
-   * Set the coordinates of the multilinestring.
-   * @param {!Array<Array<import("../coordinate.js").Coordinate>>} coordinates Coordinates.
-   * @param {GeometryLayout} [opt_layout] Layout.
-   * @api
-   */
-
-
-  MultiLineString.prototype.setCoordinates = function (coordinates, opt_layout) {
-    this.setLayout(opt_layout, coordinates, 2);
-
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = [];
-    }
-
-    var ends = (0, _deflate.deflateCoordinatesArray)(this.flatCoordinates, 0, coordinates, this.stride, this.ends_);
-    this.flatCoordinates.length = ends.length === 0 ? 0 : ends[ends.length - 1];
-    this.changed();
-  };
-
-  return MultiLineString;
-}(_SimpleGeometry.default);
-
-var _default = MultiLineString;
-exports.default = _default;
-},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./LineString.js":"../node_modules/ol/geom/LineString.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js","../array.js":"../node_modules/ol/array.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/interpolate.js":"../node_modules/ol/geom/flat/interpolate.js","./flat/intersectsextent.js":"../node_modules/ol/geom/flat/intersectsextent.js"}],"../node_modules/ol/geom/MultiPoint.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
-
-var _Point = _interopRequireDefault(require("./Point.js"));
-
-var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
-
-var _extent = require("../extent.js");
-
-var _deflate = require("./flat/deflate.js");
-
-var _array = require("../array.js");
-
-var _inflate = require("./flat/inflate.js");
-
-var _math = require("../math.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/MultiPoint
- */
-
-
-/**
- * @classdesc
- * Multi-point geometry.
- *
- * @api
- */
-var MultiPoint =
-/** @class */
-function (_super) {
-  __extends(MultiPoint, _super);
-  /**
-   * @param {Array<import("../coordinate.js").Coordinate>|Array<number>} coordinates Coordinates.
-   *     For internal use, flat coordinates in combination with `opt_layout` are also accepted.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   */
-
-
-  function MultiPoint(coordinates, opt_layout) {
-    var _this = _super.call(this) || this;
-
-    if (opt_layout && !Array.isArray(coordinates[0])) {
-      _this.setFlatCoordinates(opt_layout,
-      /** @type {Array<number>} */
-      coordinates);
-    } else {
-      _this.setCoordinates(
-      /** @type {Array<import("../coordinate.js").Coordinate>} */
-      coordinates, opt_layout);
-    }
-
-    return _this;
-  }
-  /**
-   * Append the passed point to this multipoint.
-   * @param {Point} point Point.
-   * @api
-   */
-
-
-  MultiPoint.prototype.appendPoint = function (point) {
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = point.getFlatCoordinates().slice();
-    } else {
-      (0, _array.extend)(this.flatCoordinates, point.getFlatCoordinates());
-    }
-
-    this.changed();
-  };
-  /**
-   * Make a complete copy of the geometry.
-   * @return {!MultiPoint} Clone.
-   * @api
-   */
-
-
-  MultiPoint.prototype.clone = function () {
-    var multiPoint = new MultiPoint(this.flatCoordinates.slice(), this.layout);
-    multiPoint.applyProperties(this);
-    return multiPoint;
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
-   * @param {number} minSquaredDistance Minimum squared distance.
-   * @return {number} Minimum squared distance.
-   */
-
-
-  MultiPoint.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
-    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
-      return minSquaredDistance;
-    }
-
-    var flatCoordinates = this.flatCoordinates;
-    var stride = this.stride;
-
-    for (var i = 0, ii = flatCoordinates.length; i < ii; i += stride) {
-      var squaredDistance = (0, _math.squaredDistance)(x, y, flatCoordinates[i], flatCoordinates[i + 1]);
-
-      if (squaredDistance < minSquaredDistance) {
-        minSquaredDistance = squaredDistance;
-
-        for (var j = 0; j < stride; ++j) {
-          closestPoint[j] = flatCoordinates[i + j];
-        }
-
-        closestPoint.length = stride;
-      }
-    }
-
-    return minSquaredDistance;
-  };
-  /**
-   * Return the coordinates of the multipoint.
-   * @return {Array<import("../coordinate.js").Coordinate>} Coordinates.
-   * @api
-   */
-
-
-  MultiPoint.prototype.getCoordinates = function () {
-    return (0, _inflate.inflateCoordinates)(this.flatCoordinates, 0, this.flatCoordinates.length, this.stride);
-  };
-  /**
-   * Return the point at the specified index.
-   * @param {number} index Index.
-   * @return {Point} Point.
-   * @api
-   */
-
-
-  MultiPoint.prototype.getPoint = function (index) {
-    var n = !this.flatCoordinates ? 0 : this.flatCoordinates.length / this.stride;
-
-    if (index < 0 || n <= index) {
-      return null;
-    }
-
-    return new _Point.default(this.flatCoordinates.slice(index * this.stride, (index + 1) * this.stride), this.layout);
-  };
-  /**
-   * Return the points of this multipoint.
-   * @return {Array<Point>} Points.
-   * @api
-   */
-
-
-  MultiPoint.prototype.getPoints = function () {
-    var flatCoordinates = this.flatCoordinates;
-    var layout = this.layout;
-    var stride = this.stride;
-    /** @type {Array<Point>} */
-
-    var points = [];
-
-    for (var i = 0, ii = flatCoordinates.length; i < ii; i += stride) {
-      var point = new _Point.default(flatCoordinates.slice(i, i + stride), layout);
-      points.push(point);
-    }
-
-    return points;
-  };
-  /**
-   * Get the type of this geometry.
-   * @return {import("./GeometryType.js").default} Geometry type.
-   * @api
-   */
-
-
-  MultiPoint.prototype.getType = function () {
-    return _GeometryType.default.MULTI_POINT;
-  };
-  /**
-   * Test if the geometry and the passed extent intersect.
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @return {boolean} `true` if the geometry and the extent intersect.
-   * @api
-   */
-
-
-  MultiPoint.prototype.intersectsExtent = function (extent) {
-    var flatCoordinates = this.flatCoordinates;
-    var stride = this.stride;
-
-    for (var i = 0, ii = flatCoordinates.length; i < ii; i += stride) {
-      var x = flatCoordinates[i];
-      var y = flatCoordinates[i + 1];
-
-      if ((0, _extent.containsXY)(extent, x, y)) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-  /**
-   * Set the coordinates of the multipoint.
-   * @param {!Array<import("../coordinate.js").Coordinate>} coordinates Coordinates.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @api
-   */
-
-
-  MultiPoint.prototype.setCoordinates = function (coordinates, opt_layout) {
-    this.setLayout(opt_layout, coordinates, 1);
-
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = [];
-    }
-
-    this.flatCoordinates.length = (0, _deflate.deflateCoordinates)(this.flatCoordinates, 0, coordinates, this.stride);
-    this.changed();
-  };
-
-  return MultiPoint;
-}(_SimpleGeometry.default);
-
-var _default = MultiPoint;
-exports.default = _default;
-},{"./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./Point.js":"../node_modules/ol/geom/Point.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","../array.js":"../node_modules/ol/array.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","../math.js":"../node_modules/ol/math.js"}],"../node_modules/ol/geom/flat/center.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.linearRingss = linearRingss;
-
-var _extent = require("../../extent.js");
-
-/**
- * @module ol/geom/flat/center
- */
-
-/**
- * @param {Array<number>} flatCoordinates Flat coordinates.
- * @param {number} offset Offset.
- * @param {Array<Array<number>>} endss Endss.
- * @param {number} stride Stride.
- * @return {Array<number>} Flat centers.
- */
-function linearRingss(flatCoordinates, offset, endss, stride) {
-  var flatCenters = [];
-  var extent = (0, _extent.createEmpty)();
-
-  for (var i = 0, ii = endss.length; i < ii; ++i) {
-    var ends = endss[i];
-    extent = (0, _extent.createOrUpdateFromFlatCoordinates)(flatCoordinates, offset, ends[0], stride);
-    flatCenters.push((extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2);
-    offset = ends[ends.length - 1];
-  }
-
-  return flatCenters;
-}
-},{"../../extent.js":"../node_modules/ol/extent.js"}],"../node_modules/ol/geom/MultiPolygon.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _GeometryLayout = _interopRequireDefault(require("./GeometryLayout.js"));
-
-var _GeometryType = _interopRequireDefault(require("./GeometryType.js"));
-
-var _MultiPoint = _interopRequireDefault(require("./MultiPoint.js"));
-
-var _Polygon = _interopRequireDefault(require("./Polygon.js"));
-
-var _SimpleGeometry = _interopRequireDefault(require("./SimpleGeometry.js"));
-
-var _closest = require("./flat/closest.js");
-
-var _extent = require("../extent.js");
-
-var _deflate = require("./flat/deflate.js");
-
-var _array = require("../array.js");
-
-var _interiorpoint = require("./flat/interiorpoint.js");
-
-var _inflate = require("./flat/inflate.js");
-
-var _intersectsextent = require("./flat/intersectsextent.js");
-
-var _orient = require("./flat/orient.js");
-
-var _area = require("./flat/area.js");
-
-var _center = require("./flat/center.js");
-
-var _contains = require("./flat/contains.js");
-
-var _simplify = require("./flat/simplify.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var __extends = void 0 && (void 0).__extends || function () {
-  var extendStatics = function (d, b) {
-    extendStatics = Object.setPrototypeOf || {
-      __proto__: []
-    } instanceof Array && function (d, b) {
-      d.__proto__ = b;
-    } || function (d, b) {
-      for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-    };
-
-    return extendStatics(d, b);
-  };
-
-  return function (d, b) {
-    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-    extendStatics(d, b);
-
-    function __() {
-      this.constructor = d;
-    }
-
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-  };
-}();
-/**
- * @module ol/geom/MultiPolygon
- */
-
-
-/**
- * @classdesc
- * Multi-polygon geometry.
- *
- * @api
- */
-var MultiPolygon =
-/** @class */
-function (_super) {
-  __extends(MultiPolygon, _super);
-  /**
-   * @param {Array<Array<Array<import("../coordinate.js").Coordinate>>|Polygon>|Array<number>} coordinates Coordinates.
-   *     For internal use, flat coordinates in combination with `opt_layout` and `opt_endss` are also accepted.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @param {Array<Array<number>>} [opt_endss] Array of ends for internal use with flat coordinates.
-   */
-
-
-  function MultiPolygon(coordinates, opt_layout, opt_endss) {
-    var _this = _super.call(this) || this;
-    /**
-     * @type {Array<Array<number>>}
-     * @private
-     */
-
-
-    _this.endss_ = [];
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.flatInteriorPointsRevision_ = -1;
-    /**
-     * @private
-     * @type {Array<number>}
-     */
-
-    _this.flatInteriorPoints_ = null;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDelta_ = -1;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.maxDeltaRevision_ = -1;
-    /**
-     * @private
-     * @type {number}
-     */
-
-    _this.orientedRevision_ = -1;
-    /**
-     * @private
-     * @type {Array<number>}
-     */
-
-    _this.orientedFlatCoordinates_ = null;
-
-    if (!opt_endss && !Array.isArray(coordinates[0])) {
-      var layout = _this.getLayout();
-
-      var polygons =
-      /** @type {Array<Polygon>} */
-      coordinates;
-      var flatCoordinates = [];
-      var endss = [];
-
-      for (var i = 0, ii = polygons.length; i < ii; ++i) {
-        var polygon = polygons[i];
-
-        if (i === 0) {
-          layout = polygon.getLayout();
-        }
-
-        var offset = flatCoordinates.length;
-        var ends = polygon.getEnds();
-
-        for (var j = 0, jj = ends.length; j < jj; ++j) {
-          ends[j] += offset;
-        }
-
-        (0, _array.extend)(flatCoordinates, polygon.getFlatCoordinates());
-        endss.push(ends);
-      }
-
-      opt_layout = layout;
-      coordinates = flatCoordinates;
-      opt_endss = endss;
-    }
-
-    if (opt_layout !== undefined && opt_endss) {
-      _this.setFlatCoordinates(opt_layout,
-      /** @type {Array<number>} */
-      coordinates);
-
-      _this.endss_ = opt_endss;
-    } else {
-      _this.setCoordinates(
-      /** @type {Array<Array<Array<import("../coordinate.js").Coordinate>>>} */
-      coordinates, opt_layout);
-    }
-
-    return _this;
-  }
-  /**
-   * Append the passed polygon to this multipolygon.
-   * @param {Polygon} polygon Polygon.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.appendPolygon = function (polygon) {
-    /** @type {Array<number>} */
-    var ends;
-
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = polygon.getFlatCoordinates().slice();
-      ends = polygon.getEnds().slice();
-      this.endss_.push();
-    } else {
-      var offset = this.flatCoordinates.length;
-      (0, _array.extend)(this.flatCoordinates, polygon.getFlatCoordinates());
-      ends = polygon.getEnds().slice();
-
-      for (var i = 0, ii = ends.length; i < ii; ++i) {
-        ends[i] += offset;
-      }
-    }
-
-    this.endss_.push(ends);
-    this.changed();
-  };
-  /**
-   * Make a complete copy of the geometry.
-   * @return {!MultiPolygon} Clone.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.clone = function () {
-    var len = this.endss_.length;
-    var newEndss = new Array(len);
-
-    for (var i = 0; i < len; ++i) {
-      newEndss[i] = this.endss_[i].slice();
-    }
-
-    var multiPolygon = new MultiPolygon(this.flatCoordinates.slice(), this.layout, newEndss);
-    multiPolygon.applyProperties(this);
-    return multiPolygon;
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @param {import("../coordinate.js").Coordinate} closestPoint Closest point.
-   * @param {number} minSquaredDistance Minimum squared distance.
-   * @return {number} Minimum squared distance.
-   */
-
-
-  MultiPolygon.prototype.closestPointXY = function (x, y, closestPoint, minSquaredDistance) {
-    if (minSquaredDistance < (0, _extent.closestSquaredDistanceXY)(this.getExtent(), x, y)) {
-      return minSquaredDistance;
-    }
-
-    if (this.maxDeltaRevision_ != this.getRevision()) {
-      this.maxDelta_ = Math.sqrt((0, _closest.multiArrayMaxSquaredDelta)(this.flatCoordinates, 0, this.endss_, this.stride, 0));
-      this.maxDeltaRevision_ = this.getRevision();
-    }
-
-    return (0, _closest.assignClosestMultiArrayPoint)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride, this.maxDelta_, true, x, y, closestPoint, minSquaredDistance);
-  };
-  /**
-   * @param {number} x X.
-   * @param {number} y Y.
-   * @return {boolean} Contains (x, y).
-   */
-
-
-  MultiPolygon.prototype.containsXY = function (x, y) {
-    return (0, _contains.linearRingssContainsXY)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride, x, y);
-  };
-  /**
-   * Return the area of the multipolygon on projected plane.
-   * @return {number} Area (on projected plane).
-   * @api
-   */
-
-
-  MultiPolygon.prototype.getArea = function () {
-    return (0, _area.linearRingss)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride);
-  };
-  /**
-   * Get the coordinate array for this geometry.  This array has the structure
-   * of a GeoJSON coordinate array for multi-polygons.
-   *
-   * @param {boolean} [opt_right] Orient coordinates according to the right-hand
-   *     rule (counter-clockwise for exterior and clockwise for interior rings).
-   *     If `false`, coordinates will be oriented according to the left-hand rule
-   *     (clockwise for exterior and counter-clockwise for interior rings).
-   *     By default, coordinate orientation will depend on how the geometry was
-   *     constructed.
-   * @return {Array<Array<Array<import("../coordinate.js").Coordinate>>>} Coordinates.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.getCoordinates = function (opt_right) {
-    var flatCoordinates;
-
-    if (opt_right !== undefined) {
-      flatCoordinates = this.getOrientedFlatCoordinates().slice();
-      (0, _orient.orientLinearRingsArray)(flatCoordinates, 0, this.endss_, this.stride, opt_right);
-    } else {
-      flatCoordinates = this.flatCoordinates;
-    }
-
-    return (0, _inflate.inflateMultiCoordinatesArray)(flatCoordinates, 0, this.endss_, this.stride);
-  };
-  /**
-   * @return {Array<Array<number>>} Endss.
-   */
-
-
-  MultiPolygon.prototype.getEndss = function () {
-    return this.endss_;
-  };
-  /**
-   * @return {Array<number>} Flat interior points.
-   */
-
-
-  MultiPolygon.prototype.getFlatInteriorPoints = function () {
-    if (this.flatInteriorPointsRevision_ != this.getRevision()) {
-      var flatCenters = (0, _center.linearRingss)(this.flatCoordinates, 0, this.endss_, this.stride);
-      this.flatInteriorPoints_ = (0, _interiorpoint.getInteriorPointsOfMultiArray)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride, flatCenters);
-      this.flatInteriorPointsRevision_ = this.getRevision();
-    }
-
-    return this.flatInteriorPoints_;
-  };
-  /**
-   * Return the interior points as {@link module:ol/geom/MultiPoint multipoint}.
-   * @return {MultiPoint} Interior points as XYM coordinates, where M is
-   * the length of the horizontal intersection that the point belongs to.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.getInteriorPoints = function () {
-    return new _MultiPoint.default(this.getFlatInteriorPoints().slice(), _GeometryLayout.default.XYM);
-  };
-  /**
-   * @return {Array<number>} Oriented flat coordinates.
-   */
-
-
-  MultiPolygon.prototype.getOrientedFlatCoordinates = function () {
-    if (this.orientedRevision_ != this.getRevision()) {
-      var flatCoordinates = this.flatCoordinates;
-
-      if ((0, _orient.linearRingssAreOriented)(flatCoordinates, 0, this.endss_, this.stride)) {
-        this.orientedFlatCoordinates_ = flatCoordinates;
-      } else {
-        this.orientedFlatCoordinates_ = flatCoordinates.slice();
-        this.orientedFlatCoordinates_.length = (0, _orient.orientLinearRingsArray)(this.orientedFlatCoordinates_, 0, this.endss_, this.stride);
-      }
-
-      this.orientedRevision_ = this.getRevision();
-    }
-
-    return this.orientedFlatCoordinates_;
-  };
-  /**
-   * @param {number} squaredTolerance Squared tolerance.
-   * @return {MultiPolygon} Simplified MultiPolygon.
-   * @protected
-   */
-
-
-  MultiPolygon.prototype.getSimplifiedGeometryInternal = function (squaredTolerance) {
-    var simplifiedFlatCoordinates = [];
-    var simplifiedEndss = [];
-    simplifiedFlatCoordinates.length = (0, _simplify.quantizeMultiArray)(this.flatCoordinates, 0, this.endss_, this.stride, Math.sqrt(squaredTolerance), simplifiedFlatCoordinates, 0, simplifiedEndss);
-    return new MultiPolygon(simplifiedFlatCoordinates, _GeometryLayout.default.XY, simplifiedEndss);
-  };
-  /**
-   * Return the polygon at the specified index.
-   * @param {number} index Index.
-   * @return {Polygon} Polygon.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.getPolygon = function (index) {
-    if (index < 0 || this.endss_.length <= index) {
-      return null;
-    }
-
-    var offset;
-
-    if (index === 0) {
-      offset = 0;
-    } else {
-      var prevEnds = this.endss_[index - 1];
-      offset = prevEnds[prevEnds.length - 1];
-    }
-
-    var ends = this.endss_[index].slice();
-    var end = ends[ends.length - 1];
-
-    if (offset !== 0) {
-      for (var i = 0, ii = ends.length; i < ii; ++i) {
-        ends[i] -= offset;
-      }
-    }
-
-    return new _Polygon.default(this.flatCoordinates.slice(offset, end), this.layout, ends);
-  };
-  /**
-   * Return the polygons of this multipolygon.
-   * @return {Array<Polygon>} Polygons.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.getPolygons = function () {
-    var layout = this.layout;
-    var flatCoordinates = this.flatCoordinates;
-    var endss = this.endss_;
-    var polygons = [];
-    var offset = 0;
-
-    for (var i = 0, ii = endss.length; i < ii; ++i) {
-      var ends = endss[i].slice();
-      var end = ends[ends.length - 1];
-
-      if (offset !== 0) {
-        for (var j = 0, jj = ends.length; j < jj; ++j) {
-          ends[j] -= offset;
-        }
-      }
-
-      var polygon = new _Polygon.default(flatCoordinates.slice(offset, end), layout, ends);
-      polygons.push(polygon);
-      offset = end;
-    }
-
-    return polygons;
-  };
-  /**
-   * Get the type of this geometry.
-   * @return {import("./GeometryType.js").default} Geometry type.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.getType = function () {
-    return _GeometryType.default.MULTI_POLYGON;
-  };
-  /**
-   * Test if the geometry and the passed extent intersect.
-   * @param {import("../extent.js").Extent} extent Extent.
-   * @return {boolean} `true` if the geometry and the extent intersect.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.intersectsExtent = function (extent) {
-    return (0, _intersectsextent.intersectsLinearRingMultiArray)(this.getOrientedFlatCoordinates(), 0, this.endss_, this.stride, extent);
-  };
-  /**
-   * Set the coordinates of the multipolygon.
-   * @param {!Array<Array<Array<import("../coordinate.js").Coordinate>>>} coordinates Coordinates.
-   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
-   * @api
-   */
-
-
-  MultiPolygon.prototype.setCoordinates = function (coordinates, opt_layout) {
-    this.setLayout(opt_layout, coordinates, 3);
-
-    if (!this.flatCoordinates) {
-      this.flatCoordinates = [];
-    }
-
-    var endss = (0, _deflate.deflateMultiCoordinatesArray)(this.flatCoordinates, 0, coordinates, this.stride, this.endss_);
-
-    if (endss.length === 0) {
-      this.flatCoordinates.length = 0;
-    } else {
-      var lastEnds = endss[endss.length - 1];
-      this.flatCoordinates.length = lastEnds.length === 0 ? 0 : lastEnds[lastEnds.length - 1];
-    }
-
-    this.changed();
-  };
-
-  return MultiPolygon;
-}(_SimpleGeometry.default);
-
-var _default = MultiPolygon;
-exports.default = _default;
-},{"./GeometryLayout.js":"../node_modules/ol/geom/GeometryLayout.js","./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./MultiPoint.js":"../node_modules/ol/geom/MultiPoint.js","./Polygon.js":"../node_modules/ol/geom/Polygon.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","./flat/closest.js":"../node_modules/ol/geom/flat/closest.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","../array.js":"../node_modules/ol/array.js","./flat/interiorpoint.js":"../node_modules/ol/geom/flat/interiorpoint.js","./flat/inflate.js":"../node_modules/ol/geom/flat/inflate.js","./flat/intersectsextent.js":"../node_modules/ol/geom/flat/intersectsextent.js","./flat/orient.js":"../node_modules/ol/geom/flat/orient.js","./flat/area.js":"../node_modules/ol/geom/flat/area.js","./flat/center.js":"../node_modules/ol/geom/flat/center.js","./flat/contains.js":"../node_modules/ol/geom/flat/contains.js","./flat/simplify.js":"../node_modules/ol/geom/flat/simplify.js"}],"../node_modules/ol/interaction/Draw.js":[function(require,module,exports) {
+},{"./GeometryType.js":"../node_modules/ol/geom/GeometryType.js","./SimpleGeometry.js":"../node_modules/ol/geom/SimpleGeometry.js","../extent.js":"../node_modules/ol/extent.js","./flat/deflate.js":"../node_modules/ol/geom/flat/deflate.js","./flat/transform.js":"../node_modules/ol/geom/flat/transform.js"}],"../node_modules/ol/interaction/Draw.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -57979,30 +59681,991 @@ var _View = _interopRequireDefault(require("./View.js"));
 var _util = require("./util.js");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-},{"./AssertionError.js":"../node_modules/ol/AssertionError.js","./Collection.js":"../node_modules/ol/Collection.js","./Disposable.js":"../node_modules/ol/Disposable.js","./Feature.js":"../node_modules/ol/Feature.js","./Geolocation.js":"../node_modules/ol/Geolocation.js","./layer/Graticule.js":"../node_modules/ol/layer/Graticule.js","./Image.js":"../node_modules/ol/Image.js","./ImageBase.js":"../node_modules/ol/ImageBase.js","./ImageCanvas.js":"../node_modules/ol/ImageCanvas.js","./ImageTile.js":"../node_modules/ol/ImageTile.js","./Kinetic.js":"../node_modules/ol/Kinetic.js","./Map.js":"../node_modules/ol/Map.js","./MapBrowserEvent.js":"../node_modules/ol/MapBrowserEvent.js","./MapBrowserEventHandler.js":"../node_modules/ol/MapBrowserEventHandler.js","./MapEvent.js":"../node_modules/ol/MapEvent.js","./Object.js":"../node_modules/ol/Object.js","./Observable.js":"../node_modules/ol/Observable.js","./Overlay.js":"../node_modules/ol/Overlay.js","./PluggableMap.js":"../node_modules/ol/PluggableMap.js","./Tile.js":"../node_modules/ol/Tile.js","./TileCache.js":"../node_modules/ol/TileCache.js","./TileQueue.js":"../node_modules/ol/TileQueue.js","./TileRange.js":"../node_modules/ol/TileRange.js","./VectorRenderTile.js":"../node_modules/ol/VectorRenderTile.js","./VectorTile.js":"../node_modules/ol/VectorTile.js","./View.js":"../node_modules/ol/View.js","./util.js":"../node_modules/ol/util.js"}],"js/main.js":[function(require,module,exports) {
+},{"./AssertionError.js":"../node_modules/ol/AssertionError.js","./Collection.js":"../node_modules/ol/Collection.js","./Disposable.js":"../node_modules/ol/Disposable.js","./Feature.js":"../node_modules/ol/Feature.js","./Geolocation.js":"../node_modules/ol/Geolocation.js","./layer/Graticule.js":"../node_modules/ol/layer/Graticule.js","./Image.js":"../node_modules/ol/Image.js","./ImageBase.js":"../node_modules/ol/ImageBase.js","./ImageCanvas.js":"../node_modules/ol/ImageCanvas.js","./ImageTile.js":"../node_modules/ol/ImageTile.js","./Kinetic.js":"../node_modules/ol/Kinetic.js","./Map.js":"../node_modules/ol/Map.js","./MapBrowserEvent.js":"../node_modules/ol/MapBrowserEvent.js","./MapBrowserEventHandler.js":"../node_modules/ol/MapBrowserEventHandler.js","./MapEvent.js":"../node_modules/ol/MapEvent.js","./Object.js":"../node_modules/ol/Object.js","./Observable.js":"../node_modules/ol/Observable.js","./Overlay.js":"../node_modules/ol/Overlay.js","./PluggableMap.js":"../node_modules/ol/PluggableMap.js","./Tile.js":"../node_modules/ol/Tile.js","./TileCache.js":"../node_modules/ol/TileCache.js","./TileQueue.js":"../node_modules/ol/TileQueue.js","./TileRange.js":"../node_modules/ol/TileRange.js","./VectorRenderTile.js":"../node_modules/ol/VectorRenderTile.js","./VectorTile.js":"../node_modules/ol/VectorTile.js","./View.js":"../node_modules/ol/View.js","./util.js":"../node_modules/ol/util.js"}],"../node_modules/isa.js/IsA.js":[function(require,module,exports) {
+function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function (obj) { return typeof obj; }; } else { _typeof = function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+var boolTag = '[object Boolean]',
+    dateTag = '[object Date]',
+    errorTag = '[object Error]',
+    funcTag = '[object Function]',
+    afuncTag = '[object AsyncFunction]',
+    numberTag = '[object Number]',
+    objectTag = '[object Object]',
+    regexpTag = '[object RegExp]',
+    stringTag = '[object String]';
+var objectProto = Object.prototype;
+var objToString = objectProto.toString;
+var fnToString = Function.prototype.toString;
+var objCtorString = fnToString.call(Object);
+var STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+var ARGUMENT_NAMES = /([^\s,]+)/g;
+var NAME_PATTERN = /([\\.A-Za-z]+)/g;
+let Services = {
+  getPrototypeOf: Object.getPrototypeOf,
+  isHostObject: function (value) {
+    var result = false;
+
+    if (value !== null && typeof value.toString !== 'function') {
+      try {
+        result = !!(value + '');
+      } catch (e) {}
+    }
+
+    return result;
+  },
+  isDefined: function (value) {
+    return value !== undefined && value !== null;
+  },
+  isIterable: function (obj) {
+    if (!Services.isDefined(obj)) return false;
+    return typeof obj[Symbol.iterator] === 'function';
+  },
+  isPromise: function (p) {
+    return p && Object.prototype.toString.call(p) === '[object Promise]';
+  },
+  isPlainObject: function (value) {
+    if (!this.isObjectLike(value) || objToString.call(value) !== objectTag || this.isHostObject(value)) {
+      return false;
+    }
+
+    var proto = typeof value.constructor === 'function' ? this.getPrototypeOf(value) : objectProto;
+
+    if (proto === null) {
+      return true;
+    }
+
+    var Ctor = proto.constructor;
+    return typeof Ctor === 'function' && Ctor instanceof Ctor && fnToString.call(Ctor) === objCtorString;
+  },
+  isObjectLike: function (value) {
+    return !!value && _typeof(value) === 'object';
+  },
+  isArray: Array.isArray,
+  isObject: function (value) {
+    var type = _typeof(value);
+
+    return !!value && (type === 'object' || type === 'function');
+  },
+  isError: function (value) {
+    return this.isObjectLike(value) && typeof value.message === 'string' && objToString.call(value) === errorTag;
+  },
+  isNumber: function (value) {
+    return typeof value === 'number' || this.isObjectLike(value) && objToString.call(value) === numberTag;
+  },
+  isDate: function (value) {
+    return this.isObjectLike(value) && objToString.call(value) === dateTag;
+  },
+  isFunction: function (value) {
+    return this.isObject(value) && (objToString.call(value) === funcTag || objToString.call(value) === afuncTag);
+  },
+  isSyncFunction: function (value) {
+    return this.isObject(value) && objToString.call(value) === funcTag;
+  },
+  isAsyncFunction: function (value) {
+    return this.isObject(value) && objToString.call(value) === afuncTag;
+  },
+  isBoolean: function (value) {
+    return value === true || value === false || this.isObjectLike(value) && objToString.call(value) === boolTag;
+  },
+  isString: function (value) {
+    return typeof value === 'string' || this.isObjectLike(value) && objToString.call(value) === stringTag;
+  },
+  isRegExp: function (value) {
+    return this.isObject(value) && objToString.call(value) === regexpTag;
+  },
+  walk: function (object, path, defaultValue) {
+    if (!path) return defaultValue;
+    let oPath = Array.isArray(path) ? path : path.split('.');
+    if (!object && oPath.length === 0) return true;
+
+    for (let key of oPath) {
+      if (!object || !object[key]) return defaultValue;
+      object = object[key];
+    }
+
+    return object || defaultValue;
+  },
+  isValidPath: function (object, path) {
+    return !!Services.walk(object, path, null);
+  },
+  parameterNames: function (func) {
+    var fnStr = func.toString().replace(STRIP_COMMENTS, '');
+    var result = fnStr.slice(fnStr.indexOf('(') + 1, fnStr.indexOf(')')).match(ARGUMENT_NAMES);
+    if (result === null) result = [];
+    result = result.map(p => {
+      var index = p.indexOf('=');
+      return index === -1 ? p : p.substring(0, index);
+    });
+    result = result.filter(p => {
+      return p.length > 0 && p.match(NAME_PATTERN);
+    });
+    return result;
+  },
+  pick: function (object, predicate, ignore, target) {
+    if (!object) return {};
+    if (!predicate) predicate = Object.keys(object);else if (!Array.isArray(predicate)) predicate = Object.keys(predicate);
+    if (!ignore) ignore = [];else if (!Array.isArray(ignore)) ignore = Object.keys(ignore);
+    let res = target || {};
+
+    for (let key of predicate) if (!ignore.includes(key) && object.hasOwnProperty(key)) res[key] = object[key];
+
+    return res;
+  },
+  functionsOf: function (obj, asyncOnly = false) {
+    let res = [];
+    if (!obj) return res;
+
+    for (let m in obj) if (obj[m] && (asyncOnly ? this.isAsyncFunction(obj[m]) : this.isFunction(obj[m]))) res.push(obj[m]);
+
+    return res;
+  },
+  functionNames: function (obj, asyncOnly = false) {
+    let res = [];
+    if (!obj) return res;
+
+    for (let m in obj) if (obj[m] && (asyncOnly ? this.isAsyncFunction(obj[m]) : this.isFunction(obj[m]))) res.push(m);
+
+    return res;
+  }
+};
+module.exports = Services;
+},{}],"../node_modules/hashed/lib/util.js":[function(require,module,exports) {
+const isa = require('isa.js');
+
+/**
+ * Get the type of a value.
+ * @param {*} value The value.
+ * @return {string} The type.
+ */
+exports.typeOf = function typeOf(value) {
+  let type = typeof value;
+  if (type === 'object') {
+    if (value === null) {
+      type = 'null';
+    } else if (isa.isArray(value)) {
+      type = 'array';
+    } else if (isa.isDate(value)) {
+      type = 'date';
+    } else if (isa.isRegExp(value)) {
+      type = 'regexp';
+    } else if (isa.isError(value)) {
+      type = 'error';
+    }
+  }
+  return type;
+};
+
+/**
+ * Copy properties from one object to another.
+ * @param {Object} dest The destination object.
+ * @param {Object} source The source object.
+ * @return {Object} The destination object.
+ */
+exports.extend = function(dest, source) {
+  for (const key in source) {
+    dest[key] = source[key];
+  }
+  return dest;
+};
+
+/**
+ * Generate an array of alternating name, value from an object's properties.
+ * @param {Object} object The object to zip.
+ * @return {Array} The array of name, value [, name, value]*.
+ */
+exports.zip = function(object) {
+  const zipped = [];
+  let count = 0;
+  for (const key in object) {
+    zipped[2 * count] = key;
+    zipped[2 * count + 1] = object[key];
+    ++count;
+  }
+  return zipped;
+};
+
+/**
+ * Generate an object from an array of alternating name, value items.
+ * @param {Array} array The array of name, value [, name, value]*.
+ * @return {Object} The zipped up object.
+ */
+exports.unzip = function(array) {
+  const object = {};
+  for (let i = 0, ii = array.length; i < ii; i += 2) {
+    object[array[i]] = array[i + 1];
+  }
+  return object;
+};
+
+},{"isa.js":"../node_modules/isa.js/IsA.js"}],"../node_modules/hashed/lib/serializers.js":[function(require,module,exports) {
+const isa = require('isa.js');
+
+const enc = encodeURIComponent;
+
+const serializers = {
+  string: function(str) {
+    if (typeof str !== 'string') {
+      throw new Error('Expected string to serialize: ' + str);
+    }
+    return enc(str);
+  },
+  number: function(num) {
+    if (typeof num !== 'number') {
+      throw new Error('Expected number to serialize: ' + num);
+    }
+    return enc(String(num));
+  },
+  boolean: function(bool) {
+    if (typeof bool !== 'boolean') {
+      throw new Error('Expected boolean to serialize: ' + bool);
+    }
+    return bool ? '1' : '0';
+  },
+  date: function(date) {
+    if (!isa.isDate(date)) {
+      throw new Error('Expected date to serialize: ' + date);
+    }
+    return enc(date.toISOString());
+  },
+  array: function(array) {
+    if (!isa.isArray(array)) {
+      throw new Error('Expected array to serialize: ' + array);
+    }
+    return enc(JSON.stringify(array));
+  },
+  object: function(obj) {
+    return enc(JSON.stringify(obj));
+  }
+};
+
+/**
+ * Get a serializer for a value of the given type.
+ * @param {string} type Value type.
+ * @return {function(*): string} Function that serializes a value to a string.
+ */
+exports.get = function(type) {
+  if (!(type in serializers)) {
+    throw new Error('Unable to serialize type: ' + type);
+  }
+  return serializers[type];
+};
+
+},{"isa.js":"../node_modules/isa.js/IsA.js"}],"../node_modules/hashed/lib/deserializers.js":[function(require,module,exports) {
+const util = require('./util');
+
+const dec = decodeURIComponent;
+
+const noop = function() {};
+
+const deserializers = {
+  string: function(str) {
+    if (!str || typeof str !== 'string') {
+      throw new Error('Expected string to deserialize: ' + str);
+    }
+    return dec(str);
+  },
+  number: function(str) {
+    if (!str || typeof str !== 'string') {
+      throw new Error('Expected string to deserialize: ' + str);
+    }
+    const num = Number(dec(str));
+    if (isNaN(num)) {
+      throw new Error('Expected to deserialize a number: ' + str);
+    }
+    return num;
+  },
+  boolean: function(str) {
+    if (!str || typeof str !== 'string') {
+      throw new Error('Expected string to deserialize: ' + str);
+    }
+    let bool;
+    if (str === '1') {
+      bool = true;
+    } else if (str === '0') {
+      bool = false;
+    } else {
+      throw new Error('Expected "1" or "0" for boolean: ' + str);
+    }
+    return bool;
+  },
+  date: function(str) {
+    if (!str || typeof str !== 'string') {
+      throw new Error('Expected string to deserialize: ' + str);
+    }
+    const date = new Date(dec(str));
+    if (isNaN(date.getTime())) {
+      throw new Error('Expected to deserialize a date: ' + str);
+    }
+    return date;
+  },
+  array: function(str) {
+    if (!str || typeof str !== 'string') {
+      throw new Error('Expected string to deserialize: ' + str);
+    }
+    let array;
+    try {
+      array = JSON.parse(dec(str));
+    } catch (err) {
+      noop();
+    }
+    if (!array || util.typeOf(array) !== 'array') {
+      throw new Error('Expected to deserialize an array: ' + str);
+    }
+    return array;
+  },
+  object: function(str) {
+    if (!str || typeof str !== 'string') {
+      throw new Error('Expected string to deserialize: ' + str);
+    }
+    let obj;
+    try {
+      obj = JSON.parse(dec(str));
+    } catch (err) {
+      noop();
+    }
+    if (!obj || util.typeOf(obj) !== 'object') {
+      throw new Error('Expected to deserialize an object: ' + str);
+    }
+    return obj;
+  }
+};
+
+/**
+ * Get a deserializer for a value of the given type.
+ * @param {string} type Value type.
+ * @return {function(string): *} Function that deserializes a string to a value.
+ */
+exports.get = function(type) {
+  if (!(type in deserializers)) {
+    throw new Error('Unable to deserialize type: ' + type);
+  }
+  return deserializers[type];
+};
+
+},{"./util":"../node_modules/hashed/lib/util.js"}],"../node_modules/hashed/lib/field.js":[function(require,module,exports) {
+const util = require('./util');
+
+const serializers = require('./serializers');
+const deserializers = require('./deserializers');
+
+/**
+ * Create a new field.  A field must have a default value (`default`) and is
+ * capable of serializing and deserializing values.
+ * @param {Object} config Field configuration.  Must have a `default` property
+ *     with a default value.  May have optional `serialize` and `deserialize`
+ *     functions.  As a shorthand for providing a config object with a `default`
+ *     property, a default value may be provided directly.
+ * @constructor
+ */
+exports.Field = function(config) {
+  if (util.typeOf(config) !== 'object') {
+    this.default = config;
+  } else if (!('default' in config)) {
+    throw new Error('Missing default');
+  } else {
+    this.default = config.default;
+  }
+
+  const type = util.typeOf(this.default);
+  this.serialize = config.serialize || serializers.get(type);
+  this.deserialize = config.deserialize || deserializers.get(type);
+};
+
+},{"./util":"../node_modules/hashed/lib/util.js","./serializers":"../node_modules/hashed/lib/serializers.js","./deserializers":"../node_modules/hashed/lib/deserializers.js"}],"../node_modules/hashed/lib/schema.js":[function(require,module,exports) {
+const Field = require('./field').Field;
+const util = require('./util');
+
+/**
+ * Create a new schema.  A schema is a collection of field definitions.
+ * @param {Object} config Keys are field names, values are field configs.
+ * @constructor
+ */
+const Schema = (exports.Schema = function(config) {
+  config = util.extend({}, config);
+  const fields = {};
+  let prefix;
+  if ('_' in config) {
+    prefix = config._;
+    delete config._;
+  }
+  for (const key in config) {
+    fields[key] = new Field(config[key]);
+  }
+  this._prefix = prefix;
+  this._fields = fields;
+});
+
+/**
+ * Get the prefixed version of a key.
+ * @param {string} key The key.
+ * @return {string} The prefixed key.
+ */
+Schema.prototype.getPrefixed = function(key) {
+  return this._prefix ? this._prefix + '.' + key : key;
+};
+
+/**
+ * Call a callback for each field key.
+ * @param {function(string, number)} callback Called with a local field key and
+ *     a prefixed key.
+ * @param {Object} thisArg This argument for the callback.
+ */
+Schema.prototype.forEachKey = function(callback, thisArg) {
+  let more;
+  for (const key in this._fields) {
+    more = callback.call(thisArg, key, this.getPrefixed(key));
+    if (more === false) {
+      return;
+    }
+  }
+};
+
+/**
+ * Serialize a value.
+ * @param {string} key The key or field name.
+ * @param {*} value The value to serialize.
+ * @param {Object} values Additional values for providers to use when serializing.
+ * @return {string} The serialized value.
+ */
+Schema.prototype.serialize = function(key, value, values) {
+  if (!(key in this._fields)) {
+    throw new Error('Unknown key: ' + key);
+  }
+  return this._fields[key].serialize(value, values);
+};
+
+/**
+ * Deserialize a value.
+ * @param {string} key The key or field name.
+ * @param {string} str The serialized value.
+ * @return {*} The deserialized value.
+ */
+Schema.prototype.deserialize = function(key, str) {
+  if (!(key in this._fields)) {
+    throw new Error('Unknown key: ' + key);
+  }
+  return this._fields[key].deserialize(str);
+};
+
+/**
+ * Get the default value for a particular field.
+ * @param {string} key The key or field name.
+ * @return {*} The default value.
+ */
+Schema.prototype.getDefault = function(key) {
+  if (!(key in this._fields)) {
+    throw new Error('Unknown key: ' + key);
+  }
+  return this._fields[key].default;
+};
+
+/**
+ * Determine if one schema conflicts with another.  Two schemas conflict if
+ * any of their prefixed keys are the same.
+ * @param {Schema} other The other schema.
+ * @return {boolean|string} This schema conflicts with the other.  If the two
+ *     schemas conflict, the return will be the first conflicting key (with
+ *     any prefix).
+ */
+Schema.prototype.conflicts = function(other) {
+  const thisPrefixedKeys = {};
+  for (const key in this._fields) {
+    thisPrefixedKeys[this.getPrefixed(key)] = true;
+  }
+
+  let conflicts = false;
+  other.forEachKey(function(_, prefixed) {
+    if (prefixed in thisPrefixedKeys) {
+      conflicts = prefixed;
+    }
+    return !conflicts;
+  });
+  return conflicts;
+};
+
+},{"./field":"../node_modules/hashed/lib/field.js","./util":"../node_modules/hashed/lib/util.js"}],"../node_modules/hashed/lib/store.js":[function(require,module,exports) {
+const Schema = require('./schema').Schema;
+const util = require('./util');
+const serializers = require('./serializers');
+
+/**
+ * An object backed store of string values.  Allows registering multiple state
+ * providers.
+ * @param {Object} values Initial serialized values.
+ * @param {function(Object)} callback Called with an object of serialized
+ *     values and defaults whenever a provider updates state.
+ * @constructor
+ */
+const Store = (exports.Store = function(values, callback) {
+  this._values = values;
+  this._defaults = {};
+  this._providers = [];
+  this._callback = callback;
+  this._callbackTimer = null;
+});
+
+Store.prototype._scheduleCallback = function() {
+  if (this._callbackTimer) {
+    clearTimeout(this._callbackTimer);
+  }
+  this._callbackTimer = setTimeout(this._debouncedCallback.bind(this));
+};
+
+Store.prototype._debouncedCallback = function() {
+  this._callbackTimer = null;
+  this._callback(this._values, this._defaults);
+};
+
+Store.prototype.update = function(values) {
+  if (this._updateTimer) {
+    clearTimeout(this._updateTimer);
+  }
+  this._updateTimer = setTimeout(this._debouncedUpdate.bind(this, values));
+};
+
+Store.prototype._debouncedUpdate = function(newValues) {
+  this._updateTimer = null;
+  const values = this._values;
+  const providers = this._providers.slice(); // callbacks may unregister providers
+  for (let i = providers.length - 1; i >= 0; --i) {
+    const provider = providers[i];
+    const schema = provider.schema;
+    let changed = false;
+    const state = {};
+    schema.forEachKey(function(key, prefixed) {
+      let deserialized;
+      if (!(prefixed in newValues)) {
+        deserialized = schema.getDefault(key);
+        const serializedDefault = schema.serialize(key, deserialized);
+        if (values[prefixed] !== serializedDefault) {
+          changed = true;
+          values[prefixed] = serializedDefault;
+          state[key] = deserialized;
+        }
+      } else if (values[prefixed] !== newValues[prefixed]) {
+        try {
+          deserialized = schema.deserialize(key, newValues[prefixed]);
+          values[prefixed] = newValues[prefixed];
+          state[key] = deserialized;
+          changed = true;
+        } catch (err) {
+          // invalid value, pass
+        }
+      }
+    });
+    if (changed && this._providers.indexOf(provider) >= 0) {
+      provider.callback(state);
+    }
+  }
+};
+
+/**
+ * Unregister a provider.  Deletes the provider's values from the underlying
+ * store and calls the store's callback.
+ * @param {Function} callback The provider's callback.
+ */
+Store.prototype.unregister = function(callback) {
+  let removedProvider;
+  this._providers = this._providers.filter(function(provider) {
+    const remove = provider.callback === callback;
+    if (remove) {
+      removedProvider = provider;
+    }
+    return !remove;
+  });
+  if (!removedProvider) {
+    throw new Error('Unable to unregister hashed state provider');
+  }
+  const values = this._values;
+  const defaults = this._defaults;
+  removedProvider.schema.forEachKey(function(key, prefixed) {
+    delete values[prefixed];
+    delete defaults[prefixed];
+  });
+  this._scheduleCallback();
+};
+
+/**
+ * Register a new state provider.
+ * @param {Object} config Schema config.
+ * @param {function(Object)} callback Called by the store on state changes.
+ * @return {function(Object)} Called by the provider on state changes.
+ */
+Store.prototype.register = function(config, callback) {
+  const provider = {
+    schema: new Schema(config),
+    callback: callback
+  };
+
+  // ensure there are no conflicts with existing providers
+  for (let i = 0, ii = this._providers.length; i < ii; ++i) {
+    const conflicts = provider.schema.conflicts(this._providers[i].schema);
+    if (conflicts) {
+      throw new Error(
+        'Provider already registered using the same name: ' + conflicts
+      );
+    }
+    if (provider.callback === this._providers[i].callback) {
+      throw new Error('Provider already registered with the same callback');
+    }
+  }
+
+  this._providers.push(provider);
+  this._initializeProvider(provider);
+
+  return function update(state) {
+    if (this._providers.indexOf(provider) === -1) {
+      throw new Error('Unregistered provider attempting to update state');
+    }
+    const schema = provider.schema;
+    let changed = false;
+    const values = this._values;
+    schema.forEachKey(function(key, prefixed) {
+      if (key in state) {
+        const serializedValue = schema.serialize(key, state[key], state);
+        if (values[prefixed] !== serializedValue) {
+          changed = true;
+          values[prefixed] = serializedValue;
+        }
+      }
+    });
+    if (changed) {
+      this._scheduleCallback();
+    }
+  }.bind(this);
+};
+
+/**
+ * Call provider with initial values.
+ * @param {Object} provider Provider to be initialized.
+ */
+Store.prototype._initializeProvider = function(provider) {
+  const state = {};
+  const defaults = {};
+  const values = this._values;
+  provider.schema.forEachKey(function(key, prefixed) {
+    let deserializedValue;
+    const deserializedDefault = provider.schema.getDefault(key);
+    const serializedDefault = provider.schema.serialize(
+      key,
+      deserializedDefault
+    );
+    if (prefixed in values) {
+      try {
+        deserializedValue = provider.schema.deserialize(key, values[prefixed]);
+      } catch (err) {
+        deserializedValue = deserializedDefault;
+      }
+    } else {
+      deserializedValue = deserializedDefault;
+    }
+    state[key] = deserializedValue;
+    defaults[prefixed] = serializedDefault;
+    values[prefixed] = provider.schema.serialize(key, deserializedValue);
+  });
+  for (const prefixed in defaults) {
+    this._defaults[prefixed] = defaults[prefixed];
+  }
+  provider.callback(state);
+};
+
+/**
+ * Serialize values with provider serializers where available.
+ * @param {Object} values Values to be serialized.
+ * @return {Object} The serialized values.
+ */
+Store.prototype.serialize = function(values) {
+  const serialized = {};
+  for (let i = 0, ii = this._providers.length; i < ii; ++i) {
+    const provider = this._providers[i];
+    provider.schema.forEachKey(function(key, prefixed) {
+      if (prefixed in values) {
+        serialized[prefixed] = provider.schema.serialize(
+          key,
+          values[prefixed],
+          values
+        );
+      }
+    });
+  }
+  for (const key in values) {
+    if (!(key in serialized)) {
+      const value = values[key];
+      const type = util.typeOf(value);
+      const serializer = serializers.get(type);
+      serialized[key] = serializer(value);
+    }
+  }
+  return serialized;
+};
+
+},{"./schema":"../node_modules/hashed/lib/schema.js","./util":"../node_modules/hashed/lib/util.js","./serializers":"../node_modules/hashed/lib/serializers.js"}],"../node_modules/hashed/lib/hash.js":[function(require,module,exports) {
+const util = require('./util');
+
+/**
+ * Get values from a hash string.
+ * @param {string} hash The hash string (e.g. '#/foo/bar').
+ * @return {Object} The string values (e.g. {foo: 'bar'}).
+ */
+function deserialize(hash) {
+  let zipped;
+  if (hash.length > 2) {
+    const path = hash.substring(2);
+    zipped = path.split('/');
+  } else {
+    zipped = [];
+  }
+  return util.unzip(zipped);
+}
+
+/**
+ * Serialize values for the hash.
+ * @param {Object} values The values to serialize.
+ * @return {string} The hash string.
+ */
+function serialize(values) {
+  let path = '#';
+  const parts = util.zip(values);
+  if (parts.length > 0) {
+    path = '#/' + parts.join('/');
+  }
+  return path;
+}
+
+exports.deserialize = deserialize;
+exports.serialize = serialize;
+
+},{"./util":"../node_modules/hashed/lib/util.js"}],"../node_modules/hashed/lib/main.js":[function(require,module,exports) {
+const Store = require('./store').Store;
+const hash = require('./hash');
+
+let store;
+
+function reset() {
+  if (store) {
+    window.removeEventListener('popstate', update);
+  }
+  window.addEventListener('popstate', update);
+  store = new Store(hash.deserialize(location.hash), function(
+    values,
+    defaults
+  ) {
+    const nonDefaults = {};
+    for (const key in values) {
+      if (values[key] !== defaults[key]) {
+        nonDefaults[key] = values[key];
+      }
+    }
+    history.pushState(values, '', hash.serialize(nonDefaults));
+  });
+}
+
+function update() {
+  store.update(hash.deserialize(location.hash));
+}
+
+/**
+ * Register a new state provider.
+ * @param {Object} config Schema config.
+ * @param {function(Object)} callback Called immediately with initial state.
+ * @return {function(Object)} Call this function with any updates to the state.
+ */
+exports.register = function(config, callback) {
+  return store.register(config, callback);
+};
+
+/**
+ * Unregister an existing state provider.
+ * @param {function(Object)} callback Callback registered by the provider.
+ */
+exports.unregister = function(callback) {
+  store.unregister(callback);
+};
+
+/**
+ * Serialize values as they would be represented in the hash.
+ * @param {Object} values An object with values to be serialized.
+ * @return {string} The values as they would be represented in the hash.
+ */
+exports.serialize = function(values) {
+  return hash.serialize(store.serialize(values));
+};
+
+exports.reset = reset;
+
+reset();
+
+},{"./store":"../node_modules/hashed/lib/store.js","./hash":"../node_modules/hashed/lib/hash.js"}],"../node_modules/ol-hashed/index.js":[function(require,module,exports) {
 "use strict";
 
-var _OSM = _interopRequireDefault(require("ol/source/OSM"));
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
 
-var _Tile = _interopRequireDefault(require("ol/layer/Tile"));
-
-var _ol = require("ol");
+var _hashed = _interopRequireDefault(require("hashed"));
 
 var _proj = require("ol/proj");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-new _ol.Map({
+function toPrecision(value, precision) {
+  const factor = Math.pow(10, precision);
+  return (Math.round(value * factor) / factor).toString();
+}
+
+function synchronize(map, options) {
+  options = options || {};
+  let animate;
+
+  if ('animate' in options) {
+    animate = options.animate;
+  } else {
+    animate = {
+      duration: 250
+    };
+  }
+
+  const view = map.getView();
+  const projection = view.getProjection().getCode();
+  let zoom, center, rotation;
+
+  if (view.isDef()) {
+    zoom = view.getZoom();
+    center = view.getCenter();
+    rotation = view.getRotation();
+  } else {
+    const viewport = map.getViewport();
+
+    if (viewport) {
+      zoom = Math.LOG2E * Math.log(viewport.clientWidth / 256);
+    } else {
+      zoom = 0;
+    }
+
+    center = [0, 0];
+    rotation = 0;
+  }
+
+  const config = {
+    center: {
+      default: center,
+      serialize: function (coord, state) {
+        let precision;
+
+        if (state && 'zoom' in state) {
+          precision = Math.max(0, Math.ceil(Math.log(state.zoom) / Math.LN2));
+        } else {
+          precision = 3;
+        }
+
+        coord = (0, _proj.transform)(coord, projection, 'EPSG:4326');
+        return toPrecision(coord[0], precision) + ',' + toPrecision(coord[1], precision);
+      },
+      deserialize: function (str) {
+        const parts = str.split(',');
+
+        if (parts.length !== 2) {
+          throw new Error('Expected lon,lat but got ' + str);
+        }
+
+        const coord = [parseFloat(parts[0]), parseFloat(parts[1])];
+        return (0, _proj.transform)(coord, 'EPSG:4326', projection);
+      }
+    },
+    zoom: {
+      default: zoom,
+      serialize: function (value) {
+        return toPrecision(value, 1);
+      },
+      deserialize: Number
+    },
+    rotation: {
+      default: rotation,
+      serialize: function (value) {
+        return toPrecision(value, 2);
+      },
+      deserialize: Number
+    }
+  };
+
+  function hashHandler(state) {
+    if (view.isDef() && animate) {
+      view.animate(Object.assign({}, state, animate));
+      return;
+    }
+
+    if ('center' in state) {
+      view.setCenter(state.center);
+    }
+
+    if ('zoom' in state) {
+      view.setZoom(state.zoom);
+    }
+
+    if ('rotation' in state) {
+      view.setRotation(state.rotation);
+    }
+  }
+
+  const update = _hashed.default.register(config, hashHandler);
+
+  function onMoveEnd() {
+    update({
+      center: view.getCenter(),
+      zoom: view.getZoom(),
+      rotation: view.getRotation()
+    });
+  }
+
+  map.on('moveend', onMoveEnd);
+  return function unregister() {
+    map.un('moveend', onMoveEnd);
+
+    _hashed.default.unregister(hashHandler);
+  };
+}
+
+var _default = synchronize;
+exports.default = _default;
+},{"hashed":"../node_modules/hashed/lib/main.js","ol/proj":"../node_modules/ol/proj.js"}],"js/main.js":[function(require,module,exports) {
+"use strict";
+
+var _OSM = _interopRequireDefault(require("ol/source/OSM"));
+
+var _GeoJSON = _interopRequireDefault(require("ol/format/GeoJSON"));
+
+var _Tile = _interopRequireDefault(require("ol/layer/Tile"));
+
+var _Vector = _interopRequireDefault(require("ol/layer/Vector"));
+
+var _Vector2 = _interopRequireDefault(require("ol/source/Vector"));
+
+var _ol = require("ol");
+
+var _proj = require("ol/proj");
+
+var _olHashed = _interopRequireDefault(require("ol-hashed"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var map = new _ol.Map({
   target: 'map-container',
   layers: [new _Tile.default({
     source: new _OSM.default()
+  }), new _Vector.default({
+    source: new _Vector2.default({
+      format: new _GeoJSON.default(),
+      url: '../data/countries.json'
+    })
   })],
   view: new _ol.View({
     center: (0, _proj.fromLonLat)([0, 0]),
     zoom: 2
   })
 });
-},{"ol/source/OSM":"../node_modules/ol/source/OSM.js","ol/layer/Tile":"../node_modules/ol/layer/Tile.js","ol":"../node_modules/ol/index.js","ol/proj":"../node_modules/ol/proj.js"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+(0, _olHashed.default)(map);
+},{"ol/source/OSM":"../node_modules/ol/source/OSM.js","ol/format/GeoJSON":"../node_modules/ol/format/GeoJSON.js","ol/layer/Tile":"../node_modules/ol/layer/Tile.js","ol/layer/Vector":"../node_modules/ol/layer/Vector.js","ol/source/Vector":"../node_modules/ol/source/Vector.js","ol":"../node_modules/ol/index.js","ol/proj":"../node_modules/ol/proj.js","ol-hashed":"../node_modules/ol-hashed/index.js"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -58030,7 +60693,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "37175" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "38429" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
