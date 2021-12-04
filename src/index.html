@@ -1,13 +1,22 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>My Page Title</title>
-  <meta name="description" content="My Page Description">
-  <script src="js/main.js" defer></script>
-</head>
-<body>
-    <h2>My Map</h2>
-    
-</body>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>OpenLayers</title>
+    <style>
+      @import "../node_modules/ol/ol.css";
+    </style>
+    <style>
+      html, body, #map-container {
+        margin: 0;
+        height: 100%;
+        width: 100%;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map-container"></div>
+    <script src="./js/main.js" type="module"></script>
+  </body>
 </html>
