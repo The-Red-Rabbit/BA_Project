@@ -1,3 +1,4 @@
+//Some inital node code experiments
 console.log("Hello :)");
 
 global.luckNum = '13';
@@ -17,6 +18,7 @@ console.log(txt);
 const myModule = require('./my-module');
 console.log(myModule);
 
+// Setup and run virtual Express Webserver
 const express = require('express');
 
 const app = express();

@@ -1,3 +1,3 @@
 module.exports = {
-    dob: '12.01.1982'
+    description: 'Test custom module'
 };
