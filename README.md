@@ -4,4 +4,5 @@ This is the README file.
 
 ## Commands:
 npm run dev     -   Run Parcel and start a webserver
-\nnode *.js       -   Run js-file with express
+
+node *.js       -   Run js-file with express
