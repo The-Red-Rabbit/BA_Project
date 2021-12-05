@@ -11,13 +11,15 @@ import sync from 'ol-hashed';
 const map = new Map({
   target: 'map-container',
   layers: [
+      /*
     new TileLayer({
         source: new OSM(),
       }),
+      */
     new VectorLayer({
         source: new VectorSource({
           format: new GeoJSON(),
-          url: '../data/countries.json',
+          url: './data/countries.json',
         }),
       }),
   ],

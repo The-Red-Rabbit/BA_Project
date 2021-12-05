@@ -60651,12 +60651,16 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var map = new _ol.Map({
   target: 'map-container',
-  layers: [new _Tile.default({
-    source: new _OSM.default()
-  }), new _Vector.default({
+  layers: [
+  /*
+  new TileLayer({
+    source: new OSM(),
+  }),
+  */
+  new _Vector.default({
     source: new _Vector2.default({
       format: new _GeoJSON.default(),
-      url: '../data/countries.json'
+      url: './data/countries.json'
     })
   })],
   view: new _ol.View({
@@ -60693,7 +60697,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "38429" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "40747" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
