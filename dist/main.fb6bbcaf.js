@@ -60649,29 +60649,13 @@ var _olHashed = _interopRequireDefault(require("ol-hashed"));
 
 var _DragAndDrop = _interopRequireDefault(require("ol/interaction/DragAndDrop"));
 
+var _Modify = _interopRequireDefault(require("ol/interaction/Modify"));
+
+var _Draw = _interopRequireDefault(require("ol/interaction/Draw"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-//var GeoJSON = require('geojson');
 var source = new _Vector2.default();
-var data = [{
-  name: 'Location A',
-  category: 'Store',
-  street: 'Market',
-  lat: 39.984,
-  lng: -75.343
-}, {
-  name: 'Location B',
-  category: 'House',
-  street: 'Broad',
-  lat: 39.284,
-  lng: -75.833
-}, {
-  name: 'Location C',
-  category: 'Office',
-  street: 'South',
-  lat: 39.123,
-  lng: -74.534
-}];
 var map = new _ol.Map({
   target: 'map-container',
   layers: [
@@ -60701,28 +60685,28 @@ map.addInteraction(new _DragAndDrop.default({
   source: source,
   formatConstructors: [_GeoJSON.default]
 }));
+map.addInteraction(new _Modify.default({
+  source: source
+}));
+map.addInteraction(new _Draw.default({
+  type: 'Polygon',
+  source: source
+}));
+var clear = document.getElementById('clear');
+clear.addEventListener('click', function () {
+  source.clear();
+});
+var format = new _GeoJSON.default({
+  featureProjection: 'EPSG:3857'
+});
+var download = document.getElementById('download');
+source.on('change', function () {
+  var features = source.getFeatures();
+  var json = format.writeFeatures(features);
+  download.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+});
 (0, _olHashed.default)(map);
-var data = [{
-  name: 'Location A',
-  category: 'Store',
-  street: 'Market',
-  lat: 39.984,
-  lng: -75.343
-}, {
-  name: 'Location B',
-  category: 'House',
-  street: 'Broad',
-  lat: 39.284,
-  lng: -75.833
-}, {
-  name: 'Location C',
-  category: 'Office',
-  street: 'South',
-  lat: 39.123,
-  lng: -74.534
-}]; //console.log(GeoJSON.parse(data, {Point: ['lat', 'lng']}));
-//console.log(GeoJSON.parse('data/countries.json'));
-},{"ol/source/OSM":"../node_modules/ol/source/OSM.js","ol/format/GeoJSON":"../node_modules/ol/format/GeoJSON.js","ol/layer/Tile":"../node_modules/ol/layer/Tile.js","ol/layer/Vector":"../node_modules/ol/layer/Vector.js","ol/source/Vector":"../node_modules/ol/source/Vector.js","ol":"../node_modules/ol/index.js","ol/proj":"../node_modules/ol/proj.js","ol-hashed":"../node_modules/ol-hashed/index.js","ol/interaction/DragAndDrop":"../node_modules/ol/interaction/DragAndDrop.js"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+},{"ol/source/OSM":"../node_modules/ol/source/OSM.js","ol/format/GeoJSON":"../node_modules/ol/format/GeoJSON.js","ol/layer/Tile":"../node_modules/ol/layer/Tile.js","ol/layer/Vector":"../node_modules/ol/layer/Vector.js","ol/source/Vector":"../node_modules/ol/source/Vector.js","ol":"../node_modules/ol/index.js","ol/proj":"../node_modules/ol/proj.js","ol-hashed":"../node_modules/ol-hashed/index.js","ol/interaction/DragAndDrop":"../node_modules/ol/interaction/DragAndDrop.js","ol/interaction/Modify":"../node_modules/ol/interaction/Modify.js","ol/interaction/Draw":"../node_modules/ol/interaction/Draw.js"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;

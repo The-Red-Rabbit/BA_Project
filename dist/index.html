@@ -10,10 +10,26 @@
         width: 100%;
         font-family: sans-serif;
         background-color: #04041b;
-      }</style>
+      }
+      #tools {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+#tools a {
+  display: inline-block;
+  padding: 0.5rem;
+  background: white;
+  cursor: pointer;
+}</style>
   <script src="/ol.8d82c0b8.js"></script></head>
   <body>
     <div id="map-container"></div>
+    <div id="tools">
+      <a id="clear">Clear</a>
+      <a id="download" download="features.json">Download</a>
+    </div>
+    
     <script src="/main.fb6bbcaf.js" type="module"></script>
   </body>
 </html>
