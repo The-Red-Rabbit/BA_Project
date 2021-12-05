@@ -60647,29 +60647,82 @@ var _proj = require("ol/proj");
 
 var _olHashed = _interopRequireDefault(require("ol-hashed"));
 
+var _DragAndDrop = _interopRequireDefault(require("ol/interaction/DragAndDrop"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+//var GeoJSON = require('geojson');
+var source = new _Vector2.default();
+var data = [{
+  name: 'Location A',
+  category: 'Store',
+  street: 'Market',
+  lat: 39.984,
+  lng: -75.343
+}, {
+  name: 'Location B',
+  category: 'House',
+  street: 'Broad',
+  lat: 39.284,
+  lng: -75.833
+}, {
+  name: 'Location C',
+  category: 'Office',
+  street: 'South',
+  lat: 39.123,
+  lng: -74.534
+}];
 var map = new _ol.Map({
   target: 'map-container',
   layers: [
-  /*
-  new TileLayer({
-    source: new OSM(),
-  }),
-  */
-  new _Vector.default({
-    source: new _Vector2.default({
-      format: new _GeoJSON.default(),
-      url: './data/countries.json'
+    /*
+    new TileLayer({
+      source: new OSM(),
+    }),
+    
+    new VectorLayer({
+      source: new VectorSource({
+        format: new GeoJSON(),
+        url: 'data/countries.json',
+      }),
     })
-  })],
+    */
+  ],
   view: new _ol.View({
     center: (0, _proj.fromLonLat)([0, 0]),
     zoom: 2
   })
 });
+var layer = new _Vector.default({
+  source: source
+});
+map.addLayer(layer);
+map.addInteraction(new _DragAndDrop.default({
+  source: source,
+  formatConstructors: [_GeoJSON.default]
+}));
 (0, _olHashed.default)(map);
-},{"ol/source/OSM":"../node_modules/ol/source/OSM.js","ol/format/GeoJSON":"../node_modules/ol/format/GeoJSON.js","ol/layer/Tile":"../node_modules/ol/layer/Tile.js","ol/layer/Vector":"../node_modules/ol/layer/Vector.js","ol/source/Vector":"../node_modules/ol/source/Vector.js","ol":"../node_modules/ol/index.js","ol/proj":"../node_modules/ol/proj.js","ol-hashed":"../node_modules/ol-hashed/index.js"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+var data = [{
+  name: 'Location A',
+  category: 'Store',
+  street: 'Market',
+  lat: 39.984,
+  lng: -75.343
+}, {
+  name: 'Location B',
+  category: 'House',
+  street: 'Broad',
+  lat: 39.284,
+  lng: -75.833
+}, {
+  name: 'Location C',
+  category: 'Office',
+  street: 'South',
+  lat: 39.123,
+  lng: -74.534
+}]; //console.log(GeoJSON.parse(data, {Point: ['lat', 'lng']}));
+//console.log(GeoJSON.parse('data/countries.json'));
+},{"ol/source/OSM":"../node_modules/ol/source/OSM.js","ol/format/GeoJSON":"../node_modules/ol/format/GeoJSON.js","ol/layer/Tile":"../node_modules/ol/layer/Tile.js","ol/layer/Vector":"../node_modules/ol/layer/Vector.js","ol/source/Vector":"../node_modules/ol/source/Vector.js","ol":"../node_modules/ol/index.js","ol/proj":"../node_modules/ol/proj.js","ol-hashed":"../node_modules/ol-hashed/index.js","ol/interaction/DragAndDrop":"../node_modules/ol/interaction/DragAndDrop.js"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -60697,7 +60750,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "40747" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "37753" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
