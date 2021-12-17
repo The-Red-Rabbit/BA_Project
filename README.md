@@ -2,7 +2,7 @@
 
 This is the README file. The project is part of an bachelor thesis. The goal is to simulate a train running on a map.
 
-## Commands:
+## Commands
 
 Run Parcel and start a webserver:
 ```
