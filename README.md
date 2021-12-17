@@ -1,12 +1,17 @@
 # BA_Project
 
-This is the README file.
+This is the README file. The project is part of an bachelor thesis. The goal is to simulate a train running on a map.
 
 ## Commands:
-npm run dev     -   Run Parcel and start a webserver
 
-node *.js       -   Run js-file with express
-
+Run Parcel and start a webserver:
+```
+npm run dev
+```
+Run js-file with express:
+```
+node *.js 
+```
 ## Description
 
 This is the description.
