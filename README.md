@@ -8,10 +8,7 @@ Run Parcel and start a webserver:
 ```
 npm run dev
 ```
-Run js-file with express:
-```
-node *.js 
-```
+
 ## Description
 
 This is the description.
