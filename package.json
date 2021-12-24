@@ -2,7 +2,6 @@
   "name": "ba_projectfiles",
   "version": "1.0.0",
   "description": "This is the README file.",
-  "main": "index.js",
   "scripts": {
     "dev": "parcel src/index.html",
     "build": "parcel build src/index.html"
@@ -11,13 +10,6 @@
     "type": "git",
     "url": "git+https://github.com/The-Red-Rabbit/BA_Project.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/The-Red-Rabbit/BA_Project/issues"
-  },
-  "homepage": "https://github.com/The-Red-Rabbit/BA_Project#readme",
   "dependencies": {
     "colormap": "^2.3.2",
     "geojson": "^0.5.0",
