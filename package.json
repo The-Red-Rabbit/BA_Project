@@ -11,14 +11,9 @@
     "url": "git+https://github.com/The-Red-Rabbit/BA_Project.git"
   },
   "dependencies": {
-    "colormap": "^2.3.2",
-    "geojson": "^0.5.0",
-    "kompas": "^0.0.1",
-    "ol": "^6.9.0",
-    "ol-hashed": "^2.1.0",
-    "ol-mapbox-style": "^6.6.0"
+    "ol": "latest"
   },
   "devDependencies": {
-    "parcel-bundler": "^1.12.5"
+    "parcel": "^2.0.0"
   }
 }
