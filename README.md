@@ -2,6 +2,12 @@
 
 This is the README file. The project is part of a bachelor thesis. The goal is to simulate a train running on a map.
 
+## Live-Demo
+
+View a live Demo of the current state of the project in your browser. Please note that this is only a development build and does not represent the final product.
+
+[Live-Demo Trainmap](https://redr.uber.space/zuege)
+
 ## Commands
 
 Run Parcel and start a webserver:
