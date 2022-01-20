@@ -1,0 +1,14 @@
+{
+    "startLocations": [
+        {
+            "name": "berlinHbf",
+            "lon": 52.525084,
+            "lat": 13.369402
+        },
+        {
+            "name": "berlinGesundbrunnen",
+            "lon": 99,
+            "lat": 99
+        }
+    ]
+}
