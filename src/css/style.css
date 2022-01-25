@@ -11,13 +11,39 @@ html, body, #map-container {
 
 #tools {
     position: absolute;
-    top: 1rem;
+    bottom: 1rem;
     right: 1rem;
+    background-color: #2c2c2cb3;
 }
 
 #tools a {
     display: inline-block;
     padding: 0.5rem;
-    background: white;
+    color: white;
     cursor: pointer;
+}
+
+#tools label {
+    display: inline-flex;
+    padding-right: 0.5rem;
+    color: white;
+}
+
+#tools input {
+    cursor: grab;
+}
+
+#tools input:active {
+    cursor: grabbing;
+}
+
+#tools a:hover {
+    background-color: #3b3b3bb3;
+}
+
+@media only screen and (min-width: 768px) {
+    #tools {
+        bottom: initial;
+        top: 1rem;
+    }
 }

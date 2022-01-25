@@ -2,12 +2,21 @@
 <html>
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OpenLayers</title>
     <link rel="stylesheet" href="./css/style.css"> 
   </head>
   <body>
     
     <div id="map-container"></div>
+
+    <div id="tools">
+      <a id="start-train">Start</a>
+      <label for="speed">
+        Speed:&nbsp;
+        <input id="speed" type="range" min="1" max="10" step="1" value="2">
+      </label>
+    </div>    
     
     <script src="./js/main.js" type="module"></script>
   </body>
