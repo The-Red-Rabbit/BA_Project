@@ -1,6 +1,7 @@
 var net = require('net');
 var asciichart = require ('asciichart');
 
+
 var server = net.createServer();
 server.on('connection', handleConnection);
 
