@@ -8,25 +8,29 @@ import Polyline from 'ol/format/Polyline';
 import {Circle as CircleStyle, Fill, Icon, Stroke, Style} from 'ol/style';
 import {fromLonLat} from 'ol/proj';
 import {getVectorContext} from 'ol/render';
+import GeoJSON from 'ol/format/GeoJSON';
 
 
 
-// Load input-data
+// Load input-data and pick arbitrary location for now
 var inputData = require('./data/input-data.json');
 var lon = inputData['startLocations'][0]['lon'];
 var lat = inputData['startLocations'][0]['lat'];
 
-// Define visual tile layer
+// Define visual tile layer (streets, terrain, etc.)
 const tileLayer = new TileLayer({
   source: new OSM()
 });
 
-// Define feature vector layer
+// Define feature vector source to manipulate later
+const vectorSource = new VectorSource({});
+
+// Define feature vector layer (routes, markers, etc.)
 const vectorLayer = new VectorLayer({
-  source: new VectorSource({})
+  source: vectorSource
 });
 
-// Define map
+// Define map and focus start-location
 const map = new Map({
   target: 'map-container',
   layers: [
@@ -52,7 +56,7 @@ feature.setStyle(new Style({
     })
   })
 }));
-vectorLayer.getSource().addFeature(feature);
+vectorSource.addFeature(feature);
 
 // Get GPS location of the user
 /*
@@ -82,7 +86,7 @@ const styles = {
   'route': new Style({
     stroke: new Stroke({
       width: 6,
-      color: [237, 212, 0, 0.8],
+      color: [50, 112, 14, 0.89],
     }),
   }),
   'icon': new Style({
@@ -103,15 +107,44 @@ const styles = {
   }),
 };
 
+
+
+
 // Load a route (String) from a file
 var routeData = require('./data/example-route.json');
 
+const polygon = require('./data/features.json');
+const encode = require('geojson-polyline').encode
+const encoded = encode(polygon);
+console.log(encoded.features[0].geometry.coordinates);
+console.log(routeData.routes[0].geometry);
+
 const route = new Polyline({
   factor: 1e5,
-}).readGeometry(routeData.routes[0].geometry, {
+}).readGeometry(encoded.features[0].geometry.coordinates, {
   dataProjection: 'EPSG:4326',
   featureProjection: 'EPSG:3857',
 });
+
+var geoJ = new GeoJSON();
+const vectorSourceGeoj = new VectorSource({
+  format: new GeoJSON(),
+  url: './features.json',
+});
+
+
+
+
+const mroute = new Polyline({
+  factor: 1e5,
+}).readGeometry(vectorSourceGeoj.geometry, {
+  dataProjection: 'EPSG:4326',
+  featureProjection: 'EPSG:3857',
+});
+const mrouteFeature = new Feature({
+  type: 'route'
+});
+mrouteFeature.setGeometry(mroute);
 
 // Define all features
 const routeFeature = new Feature({
@@ -132,11 +165,13 @@ const geoMarker = new Feature({
   geometry: position,
 });
 
+// Define a new VectorSource
+const vectorSourceRoute = new VectorSource({
+  features: [routeFeature, geoMarker, startMarker, endMarker],
+});
 // Define, populate and add a new VectorLayer
 const vectorLayerRoute = new VectorLayer({
-  source: new VectorSource({
-    features: [routeFeature, geoMarker, startMarker, endMarker],
-  }),
+  source: vectorSourceRoute,
   style: function (feature) {
     return styles[feature.get('type')];
   },
@@ -144,6 +179,14 @@ const vectorLayerRoute = new VectorLayer({
 map.addLayer(vectorLayerRoute);
 
 
+// Testing moving the train manualy in east direction; Button is disabled for now
+const moveButton = document.getElementById('move-train');
+moveButton.style.display = 'none';
+moveButton.addEventListener('click', function() {
+  console.log('Debug move-bttn Click!\n'+position.getCoordinates());
+  position.setCoordinates([position.getCoordinates()[0]+100, position.getCoordinates()[1]]);
+  geoMarker.setGeometry(position);
+});
 
 // Copypasta Animation-Feature
 
@@ -159,7 +202,7 @@ function moveFeature(event) {
   const elapsedTime = time - lastTime;
   distance = (distance + (speed * elapsedTime) / 1e5) % 2;
   lastTime = time;
-
+  
   const currentCoordinate = route.getCoordinateAt(
     distance > 1 ? 2 - distance : distance
   );
@@ -206,3 +249,36 @@ startButton.addEventListener('click', function() {
     startAnimation();
   }
 });
+
+
+
+/*
+const example = require('bundle-text:./data/route-data.csv');
+ 
+console.log(example);
+*/
+
+
+/*
+// Define GEOJSON vector layer
+const vectorLayerGeoj = new VectorLayer({
+  source: vectorSourceGeoj
+});
+map.addLayer(vectorLayerGeoj);
+*/
+import Modify from 'ol/interaction/Modify';
+map.addInteraction(
+  new Modify({
+    source: vectorSourceRoute,
+  })
+);
+
+
+
+
+/*
+// Testing custom node modules
+var mtest = require('./testmodul.js');
+console.log('hurra! '+mtest.myDateTime());
+*/
+

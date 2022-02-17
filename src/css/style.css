@@ -23,6 +23,12 @@ html, body, #map-container {
     cursor: pointer;
 }
 
+#tools p {
+    padding-left: 0.5rem;
+    color: white;
+    font-style: oblique;
+}
+
 #tools label {
     display: inline-flex;
     padding-right: 0.5rem;
