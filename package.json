@@ -14,7 +14,8 @@
     "csv-parse": "^5.0.4",
     "geojson-polyline": "^1.0.3",
     "ol": "latest",
-    "parcel-plugin-asset-csv": "^0.1.5"
+    "parcel-plugin-asset-csv": "^0.1.5",
+    "ws": "^8.5.0"
   },
   "devDependencies": {
     "@parcel/transformer-inline-string": "^2.2.1",

@@ -11,13 +11,25 @@
     <div id="map-container"></div>
 
     <div id="tools">
-      <p id="status-update">Übung & Mockup</p>
-      <a id="move-train">Move</a>
-      <a id="start-train">Start</a>
-      <label for="speed">
-        Speed:&nbsp;
-        <input id="speed" type="range" min="1" max="10" step="1" value="6">
-      </label>
+      <div id="tools-row">
+        <p id="status-update">Übung & Mockup</p>
+      </div>
+      <div id="tools-row">
+        <a id="move-train">Move</a>
+        <a id="start-train">Start</a>
+        <label for="speed" style="display: inline-flex;">
+          Speed:&nbsp;
+          <input id="speed" type="range" min="1" max="10" step="1" value="6">
+        </label>
+      </div>
+      <div id="tools-row">
+        <label for="connect-tcp">
+          TCP-Server:&nbsp;
+          <a id="connect-tcp">Verbinden</a>
+        </label>
+        <span id="dot-one" class="dot-base" style="animation-delay: 1s;"></span>
+        <span id="dot-two" class="dot-base"></span>
+      </div>
     </div>    
     
     <script src="./js/main.js" type="module"></script>

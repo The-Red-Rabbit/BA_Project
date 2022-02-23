@@ -1,12 +1,13 @@
 var net = require('net');
-var asciichart = require ('asciichart');
+//var asciichart = require ('asciichart');
 
+var connected = false;
 
 var server = net.createServer();
 server.on('connection', handleConnection);
 
 
-server.listen(9000, function () {
+server.listen(42640, function () {
     console.log('server listening to %j', server.address());
 });
 
@@ -43,7 +44,12 @@ function handleConnection(conn) {
         console.log('Debug: '+d.readDoubleBE());
         for (x of d.entries()) {
             //console.log(x);
-          } 
+        }
+
+        if (connected) {
+            
+        }
+
 
 
         console.log('connection data from %s: %j\n', remoteAddress, outString);
@@ -56,7 +62,7 @@ function handleConnection(conn) {
         if (outGraph.length > 50) {
             outGraph = outGraph.slice(0,49);
         }
-        console.log(asciichart.plot(outGraph));
+        //console.log(asciichart.plot(outGraph));
         outGraph = [];
     }
 
@@ -66,3 +72,21 @@ function handleConnection(conn) {
 }
 
 
+const ws = require('ws');
+
+const wss = new ws.WebSocketServer({ port: 8080 });
+
+console.log('Adress: %o',wss.address());
+
+wss.on('connection', function connection(ws) {
+  ws.on('message', function message(data) {
+    console.log('received: %s', data);
+    if (data = 'connection request') {
+        ws.send('request ok');
+        connected = true;
+    } else {
+        console.log('unknown request');
+    }
+  });
+
+});

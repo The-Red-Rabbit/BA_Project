@@ -14,6 +14,7 @@ html, body, #map-container {
     bottom: 1rem;
     right: 1rem;
     background-color: #2c2c2cb3;
+    padding-right: 0.5rem;
 }
 
 #tools a {
@@ -24,15 +25,14 @@ html, body, #map-container {
 }
 
 #tools p {
-    padding-left: 0.5rem;
-    color: white;
+    margin-left: 0.5rem;
+    color: rgb(209, 209, 209);
     font-style: oblique;
 }
 
 #tools label {
-    display: inline-flex;
-    padding-right: 0.5rem;
-    color: white;
+    margin-left: 0.5rem;
+    color: rgb(209, 209, 209);
 }
 
 #tools input {
@@ -47,9 +47,41 @@ html, body, #map-container {
     background-color: #3b3b3bb3;
 }
 
+#tools-row {
+    display: flex;
+    align-items: center;
+}
+
+.dot-base {
+    height: 20px;
+    width: 20px;
+    margin-left: 0.5rem;
+    background-color: #bbb;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot-pending {
+    animation-name: blinkbg;
+    animation-duration: 1s;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+    animation-timing-function: cubic-bezier(1,0,0,1);
+}
+
+
+/* Media Queries */
+
 @media only screen and (min-width: 768px) {
     #tools {
         bottom: initial;
         top: 1rem;
     }
+}
+
+/* Animations */
+
+@keyframes blinkbg {
+    from {background-color: #bbb;}
+    to {background-color: green;}
 }

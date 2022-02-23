@@ -282,3 +282,50 @@ var mtest = require('./testmodul.js');
 console.log('hurra! '+mtest.myDateTime());
 */
 
+
+var connected = false;
+const connectButton = document.getElementById('connect-tcp');
+
+const dotOne = document.getElementById('dot-one');
+const dotTwo = document.getElementById('dot-two');
+
+
+// Testing Websockets
+
+
+
+connectButton.addEventListener('click', function() {
+  connectButton.textContent = 'Verbindungsaufbau..';
+  dotOne.style.backgroundColor = 'yellow';
+
+
+
+  //let socket = new WebSocket('wss://redr.uber.space/ep');
+  let socket = new WebSocket('ws://localhost:8080');
+
+
+
+  socket.onopen = function(e) {
+    console.log("[open] Connection established");
+    console.log("Sending to server");
+    socket.send("connection request");
+  };
+
+  socket.onerror = function(error) {
+    console.log(`[error] ${error.message}`);
+    connectButton.textContent = 'Verbindung fehlgeschlagen';
+    dotOne.style.backgroundColor = 'red';
+  };
+
+  socket.onmessage = function(event) {
+    console.log(`[message] Data received from server: ${event.data}`);
+    if (event.data = 'request ok') {
+      connectButton.textContent = 'Trennen';
+      dotOne.classList.add('dot-pending');
+      dotTwo.classList.add('dot-pending');
+    } else {
+      
+    }
+  };
+
+});
