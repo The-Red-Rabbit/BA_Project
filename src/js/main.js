@@ -10,12 +10,82 @@ import {fromLonLat} from 'ol/proj';
 import {getVectorContext} from 'ol/render';
 import GeoJSON from 'ol/format/GeoJSON';
 
+// VARIABLES
+
+var startLon = 52.525084;
+var startLat = 13.369402;
 
 
-// Load input-data and pick arbitrary location for now
-var inputData = require('./data/input-data.json');
-var lon = inputData['startLocations'][0]['lon'];
-var lat = inputData['startLocations'][0]['lat'];
+// UI ELEMENTS
+
+const startCoordPopup = document.getElementById('startcoord-popup');
+const startCoordInput = document.getElementById('startcoord-input');
+const startCoordBttn = document.getElementById('startcoord-bttn');
+const tcpBttn = document.getElementById('tcp-bttn');
+
+
+// EVENTS
+
+startCoordBttn.addEventListener('click', function() {
+  // Sanitize input
+  let coordInputValue = sanitizeString(startCoordInput.value);
+  // Check for vaild input
+  let coordArr = coordInputValue.match(/-?[0-9]+\.-?[0-9]+/g);
+  if (coordInputValue && coordArr && coordArr.length == 2) {
+    console.log('valid: %s ; %s', coordArr[0], coordArr[1]);
+    startCoordInput.value = '';
+    triggerPopup('&#9745; Koordinaten gesetzt');
+    // Set new start coordinates
+    startLon = parseFloat(coordArr[0]);
+    startLat = parseFloat(coordArr[1]);
+  } else {
+    console.log('invalid');
+    triggerPopup('&#9888; Eingabe fehlerhaft');
+  }
+  function triggerPopup(popupText) {
+    startCoordPopup.innerHTML = popupText;
+    startCoordPopup.classList.add('show');
+    setTimeout(function(){startCoordPopup.classList.remove('show');}, 3000);
+  }
+});
+tcpBttn.addEventListener('click', function() {
+  tcpBttn.textContent = 'Verbindungsaufbau..';
+  dotOne.style.backgroundColor = 'yellow';
+
+
+
+  //let socket = new WebSocket('wss://redr.uber.space/ep');
+  let socket = new WebSocket('ws://localhost:8080');
+
+  
+
+  socket.onopen = function(e) {
+    console.log("[open] Connection established");
+    console.log("Sending to server");
+    socket.send("connection request");
+  };
+
+  socket.onerror = function(error) {
+    console.log(`[error] ${error.message}`);
+    tcpBttn.textContent = 'Verbindung fehlgeschlagen';
+    dotOne.style.backgroundColor = 'red';
+  };
+
+  socket.onmessage = function(event) {
+    console.log(`[message] Data received from server: ${event.data}`);
+    if (event.data = 'request ok') {
+      tcpBttn.textContent = 'Trennen';
+      dotOne.classList.add('dot-pending');
+      dotTwo.classList.add('dot-pending');
+    } else {
+      
+    }
+  };
+
+});
+
+
+// OPEN LAYERS
 
 // Define visual tile layer (streets, terrain, etc.)
 const tileLayer = new TileLayer({
@@ -38,13 +108,13 @@ const map = new Map({
     vectorLayer
   ],
   view: new View({
-    center: fromLonLat([lat, lon]),
+    center: fromLonLat([startLat, startLon]),
     zoom: 16,
   }),
 });
 
 // Add and render examples
-const geom = new Point(fromLonLat([lat, lon]));
+const geom = new Point(fromLonLat([startLat, startLon]));
 const feature = new Feature(geom);
 feature.setStyle(new Style({
   image: new CircleStyle({
@@ -285,7 +355,7 @@ console.log('hurra! '+mtest.myDateTime());
 
 
 var connected = false;
-const connectButton = document.getElementById('tcp-bttn');
+
 
 const dotOne = document.getElementById('dot-one');
 const dotTwo = document.getElementById('dot-two');
@@ -295,38 +365,11 @@ const dotTwo = document.getElementById('dot-two');
 
 
 
-connectButton.addEventListener('click', function() {
-  connectButton.textContent = 'Verbindungsaufbau..';
-  dotOne.style.backgroundColor = 'yellow';
 
 
+// UTILITY FUNCTIONS
 
-  //let socket = new WebSocket('wss://redr.uber.space/ep');
-  let socket = new WebSocket('ws://localhost:8080');
-
-  
-
-  socket.onopen = function(e) {
-    console.log("[open] Connection established");
-    console.log("Sending to server");
-    socket.send("connection request");
-  };
-
-  socket.onerror = function(error) {
-    console.log(`[error] ${error.message}`);
-    connectButton.textContent = 'Verbindung fehlgeschlagen';
-    dotOne.style.backgroundColor = 'red';
-  };
-
-  socket.onmessage = function(event) {
-    console.log(`[message] Data received from server: ${event.data}`);
-    if (event.data = 'request ok') {
-      connectButton.textContent = 'Trennen';
-      dotOne.classList.add('dot-pending');
-      dotTwo.classList.add('dot-pending');
-    } else {
-      
-    }
-  };
-
-});
+function sanitizeString(str){
+  str = str.replace(/[^a-z0-9áéíóúñü \.,_-]/gim,"");
+  return str.trim();
+}

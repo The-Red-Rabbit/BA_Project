@@ -20,9 +20,14 @@
       </div>
       <div id="menu-panel">
         <div class="menu-row">
+          <h2>Simulierter Zugverkehr</h2>
+        </div>
+        <hr>
+        <div class="menu-row">
           <h3>Startbahnhof Koordinaten</h3>
-          <form class="startcoord-form">
-            <input type="text" id="startcoord-latlong" placeholder="52.52289810462147, 13.402295167528221">
+          <form class="startcoord-form" action="">
+            <span class="startcoord-popuptext" id="startcoord-popup">Popup Text</span>
+            <input type="text" id="startcoord-input" placeholder="52.52289810462147, 13.402295167528221">
           </form>
           <a id="startcoord-bttn">Anwenden</a>
         </div>
@@ -41,30 +46,6 @@
         </div>
       </div>
     </div>
-
-    <!--
-    <div id="tools">
-      <div id="tools-row">
-        <p id="status-update">Übung & Mockup</p>
-      </div>
-      <div id="tools-row">
-        <a id="move-train">Move</a>
-        <a id="start-train">Start</a>
-        <label for="speed" style="display: inline-flex;">
-          Speed:&nbsp;
-          <input id="speed" type="range" min="1" max="10" step="1" value="6">
-        </label>
-      </div>
-      <div id="tools-row">
-        <label for="connect-tcp">
-          TCP-Server:&nbsp;
-          <a id="connect-tcp">Verbinden</a>
-        </label>
-        <span id="dot-one" class="dot-base" style="animation-delay: 1s;"></span>
-        <span id="dot-two" class="dot-base"></span>
-      </div>
-    </div>    
-    -->
     
     <script src="./js/main.js" type="module"></script>
     <script>
@@ -77,6 +58,9 @@
           menuPanel.style.maxHeight = menuPanel.scrollHeight + 'px';
         }
       }
+
+      // Disable 'Enter' key
+      window.addEventListener('keydown',function(e){if(e.keyIdentifier=='U+000A'||e.keyIdentifier=='Enter'||e.keyCode==13){if(e.target.nodeName=='INPUT'&&e.target.type=='text'){e.preventDefault();return false;}}},true);
     </script>
   </body>
 </html>
