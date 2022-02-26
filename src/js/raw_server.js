@@ -1,15 +1,71 @@
+// Require Node-Modules
+var ws = require('ws');
 var net = require('net');
-//var asciichart = require ('asciichart');
+//var asciichart = require('asciichart');
 
+// Frontend <-> Backend connection status
 var connected = false;
 
-var server = net.createServer();
-server.on('connection', handleConnection);
+// Create Websocket-Server
+const wss = new ws.WebSocketServer({ port: 8080 });
+console.log('WS-Server:  %o', wss.address());
 
-
+// Create TCP-Server and listen on Port 42640
+const server = net.createServer();
 server.listen(42640, function () {
-    console.log('server listening to %j', server.address());
+    console.log('TCP-Server: %o', server.address());
 });
+
+// Event: Websocket-Connection established
+wss.on('connection', function connection(ws) {
+    // Event: Data from Frontend received
+    ws.on('message', function message(data) {
+        console.log('WS data received: %s', data);
+        // Handle connection request from Frontend
+        if (data = 'connection request') {
+            ws.send('request ok');
+            connected = true;
+        } else {
+            console.log('unknown request');
+        }
+    });
+    ws.on('close', function close(foo) {
+        console.log('WS connection closed %o', foo);
+        connected = false;
+    });
+    // Event: TCP-Connection established
+    server.on('connection', function connectionTCP(conn) {
+        var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
+        console.log('New client connection from %s', remoteAddress);
+        // Event: Data from Simulator received
+        conn.on('data', function dataTCP(d) {
+            console.log('Data: '+d.readDoubleBE());
+            // Only proceed if there is already a connection to the Frontend
+            if (connected) {
+                ws.send(d.readDoubleBE());
+            } else {
+                console.log('Data cannot be forwarded to Frontend. No Websocket-Connection established.');
+            }
+        });
+        // Event: Connection from Simulator closed
+        conn.once('close', function closeTCP() {
+            console.log('Connection from %s closed', remoteAddress);
+        });
+        // Event: Catch TCP connection error
+        conn.on('error', function errorTCP(e) {
+            console.log('TCP connection error: %s - %s', e.name, e.message);
+        });
+    });
+});
+
+
+
+
+/*
+
+
+
+
 
 function handleConnection(conn) {
     var dataPointCount = 0;
@@ -72,21 +128,8 @@ function handleConnection(conn) {
 }
 
 
-const ws = require('ws');
 
-const wss = new ws.WebSocketServer({ port: 8080 });
 
-console.log('Adress: %o',wss.address());
 
-wss.on('connection', function connection(ws) {
-  ws.on('message', function message(data) {
-    console.log('received: %s', data);
-    if (data = 'connection request') {
-        ws.send('request ok');
-        connected = true;
-    } else {
-        console.log('unknown request');
-    }
-  });
 
-});
+*/

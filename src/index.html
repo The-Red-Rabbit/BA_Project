@@ -10,6 +10,39 @@
     
     <div id="map-container"></div>
 
+    <div class="menu">
+      <div class="menu-bttn">
+        <div class="burger-icon" onclick="toggleMenuPanel(this)">
+          <div class="bar1"></div>
+          <div class="bar2"></div>
+          <div class="bar3"></div>
+        </div>
+      </div>
+      <div id="menu-panel">
+        <div class="menu-row">
+          <h3>Startbahnhof Koordinaten</h3>
+          <form class="startcoord-form">
+            <input type="text" id="startcoord-latlong" placeholder="52.52289810462147, 13.402295167528221">
+          </form>
+          <a id="startcoord-bttn">Anwenden</a>
+        </div>
+        <hr>
+        <div class="menu-row">
+          <h3>TCP-Server Verbindung</h3>
+          <div class="tcp-signal">
+            <span id="dot-one" class="dot-base" style="animation-delay: 1s;"></span>
+            <span id="dot-two" class="dot-base"></span>
+          </div>
+          <a id="tcp-bttn">Verbinden</a>
+        </div>
+        <hr>
+        <div class="menu-row">
+          <small>Made by Felix with &#128150;</small>
+        </div>
+      </div>
+    </div>
+
+    <!--
     <div id="tools">
       <div id="tools-row">
         <p id="status-update">Übung & Mockup</p>
@@ -31,7 +64,19 @@
         <span id="dot-two" class="dot-base"></span>
       </div>
     </div>    
+    -->
     
     <script src="./js/main.js" type="module"></script>
+    <script>
+      function toggleMenuPanel(burgerIcon) {
+        burgerIcon.classList.toggle('burger-toggle');
+        var menuPanel = document.getElementById('menu-panel');
+        if (menuPanel.style.maxHeight) {
+          menuPanel.style.maxHeight = null;
+        } else {
+          menuPanel.style.maxHeight = menuPanel.scrollHeight + 'px';
+        }
+      }
+    </script>
   </body>
 </html>

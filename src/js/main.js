@@ -178,7 +178,7 @@ const vectorLayerRoute = new VectorLayer({
 });
 map.addLayer(vectorLayerRoute);
 
-
+/*
 // Testing moving the train manualy in east direction; Button is disabled for now
 const moveButton = document.getElementById('move-train');
 moveButton.style.display = 'none';
@@ -187,6 +187,7 @@ moveButton.addEventListener('click', function() {
   position.setCoordinates([position.getCoordinates()[0]+100, position.getCoordinates()[1]]);
   geoMarker.setGeometry(position);
 });
+
 
 // Copypasta Animation-Feature
 
@@ -249,7 +250,7 @@ startButton.addEventListener('click', function() {
     startAnimation();
   }
 });
-
+*/
 
 
 /*
@@ -284,7 +285,7 @@ console.log('hurra! '+mtest.myDateTime());
 
 
 var connected = false;
-const connectButton = document.getElementById('connect-tcp');
+const connectButton = document.getElementById('tcp-bttn');
 
 const dotOne = document.getElementById('dot-one');
 const dotTwo = document.getElementById('dot-two');
@@ -303,7 +304,7 @@ connectButton.addEventListener('click', function() {
   //let socket = new WebSocket('wss://redr.uber.space/ep');
   let socket = new WebSocket('ws://localhost:8080');
 
-
+  
 
   socket.onopen = function(e) {
     console.log("[open] Connection established");

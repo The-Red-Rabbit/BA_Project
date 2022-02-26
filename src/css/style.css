@@ -1,6 +1,10 @@
 @import "../../node_modules/ol/ol.css";
 
 
+* {
+    box-sizing: border-box;
+}
+
 html, body, #map-container {
     margin: 0;
     height: 100%;
@@ -9,48 +13,102 @@ html, body, #map-container {
     background-color: #04041b;
 }
 
-#tools {
-    position: absolute;
-    bottom: 1rem;
-    right: 1rem;
-    background-color: #2c2c2cb3;
-    padding-right: 0.5rem;
+h3 {
+    margin: 0;
 }
 
-#tools a {
+.menu {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+}
+
+.menu a {
     display: inline-block;
     padding: 0.5rem;
-    color: white;
+    background-color: #252525b3;
     cursor: pointer;
 }
 
-#tools p {
-    margin-left: 0.5rem;
-    color: rgb(209, 209, 209);
-    font-style: oblique;
-}
-
-#tools label {
-    margin-left: 0.5rem;
-    color: rgb(209, 209, 209);
-}
-
-#tools input {
-    cursor: grab;
-}
-
-#tools input:active {
-    cursor: grabbing;
-}
-
-#tools a:hover {
+.menu a:hover {
     background-color: #3b3b3bb3;
 }
 
-#tools-row {
-    display: flex;
-    align-items: center;
+.menu a:active {
+    background-color: #575757b3;
+    cursor: wait;
 }
+
+.menu small {
+    float: right;
+    color: gray;
+}
+
+.menu-bttn {
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.burger-icon {
+    display: inline-block;
+    cursor: pointer;
+}
+
+.bar1, .bar2, .bar3 {
+    width: 35px;
+    height: 5px;
+    background-color: #333;
+    margin: 6px 0;
+    transition: 0.4s;
+}
+
+/* Rotate first bar */
+.burger-toggle .bar1 {
+    -webkit-transform: rotate(-45deg) translate(-9px, 6px) ;
+    transform: rotate(-45deg) translate(-9px, 6px) ;
+}
+  
+/* Fade out the second bar */
+.burger-toggle .bar2 {
+    opacity: 0;
+}
+  
+/* Rotate last bar */
+.burger-toggle .bar3 {
+    -webkit-transform: rotate(45deg) translate(-8px, -8px) ;
+    transform: rotate(45deg) translate(-8px, -8px) ;
+}
+
+#menu-panel {
+    max-height: 0;
+    color: white;
+    overflow: hidden;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+    border-radius: 5px;
+    transition: max-height 0.2s ease-out;
+}
+
+.menu-row {
+    padding: 0.5rem;
+}
+
+input[type=text], select {
+    width: 100%;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    display: block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#startcoord-bttn {
+    margin-right: 12rem;
+}
+
+.tcp-signal {
+    margin: 1rem 1rem 1rem 0;
+}
+
 
 .dot-base {
     height: 20px;
@@ -73,7 +131,7 @@ html, body, #map-container {
 /* Media Queries */
 
 @media only screen and (min-width: 768px) {
-    #tools {
+    .menu {
         bottom: initial;
         top: 1rem;
     }
@@ -84,4 +142,21 @@ html, body, #map-container {
 @keyframes blinkbg {
     from {background-color: #bbb;}
     to {background-color: green;}
+}
+
+/* Experimental Features */
+
+@supports (-webkit-backdrop-filter: none) or (backdrop-filter: none) {
+    #menu-panel {
+        background-color: rgba(44, 44, 44, .5);
+      -webkit-backdrop-filter: blur(7px);
+      backdrop-filter: blur(7px);
+    }
+}
+  
+  /* slightly transparent fallback for Firefox (not supporting backdrop-filter) */
+@supports not ((-webkit-backdrop-filter: none) or (backdrop-filter: none)) {
+    #menu-panel {
+        background-color: rgba(44, 44, 44, .8);
+    }
 }
