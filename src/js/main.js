@@ -6,17 +6,14 @@ import Point from 'ol/geom/Point';
 import {circular} from 'ol/geom/Polygon';
 import Polyline from 'ol/format/Polyline';
 import {Circle as CircleStyle, Fill, Icon, Stroke, Style} from 'ol/style';
-import {fromLonLat} from 'ol/proj';
+import {fromLonLat, transform} from 'ol/proj';
 import {getVectorContext} from 'ol/render';
 import GeoJSON from 'ol/format/GeoJSON';
 
-// VARIABLES
 
-var startLon = 52.525084;
-var startLat = 13.369402;
-
-
-// UI ELEMENTS
+/* 
+ * UI ELEMENTS
+ */
 
 const startCoordPopup = document.getElementById('startcoord-popup');
 const startCoordInput = document.getElementById('startcoord-input');
@@ -24,7 +21,89 @@ const startCoordBttn = document.getElementById('startcoord-bttn');
 const tcpBttn = document.getElementById('tcp-bttn');
 
 
-// EVENTS
+/* 
+ * OPEN LAYERS
+ */
+
+var startLocation = fromLonLat([13.369402, 52.525084]);
+
+// Define visual tile layer (streets, terrain, etc.)
+const tileLayer = new TileLayer({
+  source: new OSM()
+});
+
+// Define feature vector source to manipulate later
+const vectorSource = new VectorSource({});
+
+// Define feature vector layer (routes, markers, etc.)
+const vectorLayer = new VectorLayer({
+  source: vectorSource
+});
+
+// Define view with start-location
+const view = new View({
+  center: startLocation,
+  zoom: 16
+});
+
+// Define map and focus start-location
+const map = new Map({
+  target: 'map-container',
+  layers: [
+    tileLayer,
+    vectorLayer
+  ],
+  view: view
+});
+
+// Define feature-styles
+const styles = {
+  'route': new Style({
+    stroke: new Stroke({
+      width: 6,
+      color: [50, 112, 14, 0.89],
+    }),
+  }),
+  'trainstop': new Style({
+    image: new Icon({
+      anchor: [0.5, 1],
+      src: './train-stop.png',
+    }),
+  }),
+  'train': new Style({
+    image: new CircleStyle({
+      radius: 7,
+      fill: new Fill({color: 'black'}),
+      stroke: new Stroke({
+        color: 'white',
+        width: 2,
+      }),
+    }),
+  })
+};
+
+// Define features
+const startMarker = new Feature({
+  type: 'trainstop',
+  geometry: new Point(startLocation)
+});
+
+const trainPosition = startMarker.getGeometry().clone();
+const trainMarker = new Feature({
+  type: 'train',
+  geometry: trainPosition,
+});
+
+// Add and display features
+vectorSource.addFeatures([startMarker, trainMarker]);
+vectorLayer.setStyle(function (feature) {
+  return styles[feature.get('type')];
+});
+
+
+/* 
+ * EVENTS
+ */
 
 startCoordBttn.addEventListener('click', function() {
   // Sanitize input
@@ -36,8 +115,14 @@ startCoordBttn.addEventListener('click', function() {
     startCoordInput.value = '';
     triggerPopup('&#9745; Koordinaten gesetzt');
     // Set new start coordinates
-    startLon = parseFloat(coordArr[0]);
-    startLat = parseFloat(coordArr[1]);
+    startLocation = fromLonLat([parseFloat(coordArr[1]), parseFloat(coordArr[0])]);
+    trainPosition.setCoordinates(startLocation);
+    startMarker.setGeometry(trainPosition);
+    // Move view to new start-location
+    view.animate({
+      center: startLocation,
+      duration: 2000
+    });
   } else {
     console.log('invalid');
     triggerPopup('&#9888; Eingabe fehlerhaft');
@@ -48,6 +133,7 @@ startCoordBttn.addEventListener('click', function() {
     setTimeout(function(){startCoordPopup.classList.remove('show');}, 3000);
   }
 });
+
 tcpBttn.addEventListener('click', function() {
   tcpBttn.textContent = 'Verbindungsaufbau..';
   dotOne.style.backgroundColor = 'yellow';
@@ -85,36 +171,36 @@ tcpBttn.addEventListener('click', function() {
 });
 
 
-// OPEN LAYERS
 
-// Define visual tile layer (streets, terrain, etc.)
-const tileLayer = new TileLayer({
-  source: new OSM()
-});
 
-// Define feature vector source to manipulate later
-const vectorSource = new VectorSource({});
 
-// Define feature vector layer (routes, markers, etc.)
-const vectorLayer = new VectorLayer({
-  source: vectorSource
-});
 
-// Define map and focus start-location
-const map = new Map({
-  target: 'map-container',
-  layers: [
-    tileLayer,
-    vectorLayer
-  ],
-  view: new View({
-    center: fromLonLat([startLat, startLon]),
-    zoom: 16,
-  }),
-});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 
 // Add and render examples
-const geom = new Point(fromLonLat([startLat, startLon]));
+const geom = new Point(startLocation);
 const feature = new Feature(geom);
 feature.setStyle(new Style({
   image: new CircleStyle({
@@ -128,28 +214,6 @@ feature.setStyle(new Style({
 }));
 vectorSource.addFeature(feature);
 
-// Get GPS location of the user
-/*
-navigator.geolocation.watchPosition(
-  function (pos) {
-    const coords = [pos.coords.longitude, pos.coords.latitude];
-    const accuracy = circular(coords, pos.coords.accuracy);
-    vectorSource.clear(true);
-    vectorSource.addFeatures([
-      new Feature(
-        accuracy.transform('EPSG:4326', map.getView().getProjection())
-      ),
-      new Feature(new Point(fromLonLat(coords))),
-    ]);
-  },
-  function (error) {
-    alert(`ERROR: ${error.message}`);
-  },
-  {
-    enableHighAccuracy: true,
-  }
-);
-*/
 
 // Define all styles for animation features
 const styles = {
@@ -176,10 +240,10 @@ const styles = {
     }),
   }),
 };
+ */
 
 
-
-
+/* 
 // Load a route (String) from a file
 var routeData = require('./data/example-route.json');
 
@@ -247,6 +311,10 @@ const vectorLayerRoute = new VectorLayer({
   },
 });
 map.addLayer(vectorLayerRoute);
+
+ */
+
+
 
 /*
 // Testing moving the train manualy in east direction; Button is disabled for now
@@ -337,13 +405,6 @@ const vectorLayerGeoj = new VectorLayer({
 });
 map.addLayer(vectorLayerGeoj);
 */
-import Modify from 'ol/interaction/Modify';
-map.addInteraction(
-  new Modify({
-    source: vectorSourceRoute,
-  })
-);
-
 
 
 
@@ -361,7 +422,6 @@ const dotOne = document.getElementById('dot-one');
 const dotTwo = document.getElementById('dot-two');
 
 
-// Testing Websockets
 
 
 
