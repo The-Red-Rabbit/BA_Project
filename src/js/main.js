@@ -12,12 +12,22 @@ import GeoJSON from 'ol/format/GeoJSON';
 
 
 /* 
+ * VARIABLES
+ */
+
+var hasWSConnection = false;
+var socket;
+
+
+/* 
  * UI ELEMENTS
  */
 
 const startCoordPopup = document.getElementById('startcoord-popup');
 const startCoordInput = document.getElementById('startcoord-input');
 const startCoordBttn = document.getElementById('startcoord-bttn');
+const dotOne = document.getElementById('dot-one');
+const dotTwo = document.getElementById('dot-two');
 const tcpBttn = document.getElementById('tcp-bttn');
 
 
@@ -102,6 +112,19 @@ vectorLayer.setStyle(function (feature) {
 
 
 /* 
+ * FUNCTIONS
+ */
+
+function moveTrain(dX, dY) {
+  console.log('Debug moveTrain - Coords: %O - Deltas: x=%f y=%f', trainPosition.getCoordinates(), dX, dY);
+  trainPosition.setCoordinates([trainPosition.getCoordinates()[0]+dX, trainPosition.getCoordinates()[1]+dY]);
+  trainMarker.setGeometry(trainPosition);
+  vectorLayer.getRenderer().changed();
+  //vectorSource.refresh();
+}
+
+
+/* 
  * EVENTS
  */
 
@@ -134,40 +157,68 @@ startCoordBttn.addEventListener('click', function() {
   }
 });
 
+var dataIndex = 1;
+    var prevCoordX = 0;
+    var prevCoordY = 0;
 tcpBttn.addEventListener('click', function() {
-  tcpBttn.textContent = 'Verbindungsaufbau..';
-  dotOne.style.backgroundColor = 'yellow';
+  // Check for existing WS connection
+  if (!hasWSConnection) {
+    // Establish WS connection
+    tcpBttn.textContent = 'Verbindungsaufbau..';
 
+    //socket = new WebSocket('wss://redr.uber.space/ep');
+    socket = new WebSocket('ws://localhost:8080');
+    
+    socket.onopen = function(e) {
+      console.log("[ws-open] Connection established. Sending request...");
+      // Request connection to server
+      socket.send("connection request");
+    };
 
+    socket.onerror = function(error) {
+      console.log(`[ws-error] %o`, error.target);
+      tcpBttn.textContent = 'Verbindung fehlgeschlagen';
+      dotOne.style.backgroundColor = 'red';
+    };
 
-  //let socket = new WebSocket('wss://redr.uber.space/ep');
-  let socket = new WebSocket('ws://localhost:8080');
+    socket.onclose = function(event) {
+      console.log('[ws-close] Connection closed: %s %s', event.code, event.reason);
+      tcpBttn.textContent = 'Verbinden';
+      dotOne.classList.remove('dot-pending');
+      dotTwo.classList.remove('dot-pending');
+      hasWSConnection = false;
+    };
 
-  
-
-  socket.onopen = function(e) {
-    console.log("[open] Connection established");
-    console.log("Sending to server");
-    socket.send("connection request");
-  };
-
-  socket.onerror = function(error) {
-    console.log(`[error] ${error.message}`);
-    tcpBttn.textContent = 'Verbindung fehlgeschlagen';
-    dotOne.style.backgroundColor = 'red';
-  };
-
-  socket.onmessage = function(event) {
-    console.log(`[message] Data received from server: ${event.data}`);
-    if (event.data = 'request ok') {
-      tcpBttn.textContent = 'Trennen';
-      dotOne.classList.add('dot-pending');
-      dotTwo.classList.add('dot-pending');
-    } else {
-      
-    }
-  };
-
+    
+    socket.onmessage = function(event) {
+      console.log(`[ws-message] Data No.%s received from server: %o`, dataIndex, event.data);
+      // Check for request answer or data
+      if (event.data == 'request ok') {
+        tcpBttn.textContent = 'Trennen';
+        dotOne.classList.add('dot-pending');
+        dotTwo.classList.add('dot-pending');
+        hasWSConnection = true;
+      } else {
+        // Handle incoming data from simulink
+        //...
+        if (dataIndex%2 == 0) {
+          moveTrain(0, event.data-prevCoordY);
+          prevCoordY = event.data;
+        } else {
+          moveTrain(event.data-prevCoordX, 0);
+          prevCoordX = event.data;
+        }
+        dataIndex++;
+      }
+    };
+  } else {
+    // Terminate WS connection
+    tcpBttn.textContent = 'Verbinden';
+    dotOne.classList.remove('dot-pending');
+    dotTwo.classList.remove('dot-pending');
+    socket.close(1000, 'User terminated the connection');
+    hasWSConnection = false;
+  }
 });
 
 
@@ -196,51 +247,6 @@ tcpBttn.addEventListener('click', function() {
 
 
 
-
-/*
-
-// Add and render examples
-const geom = new Point(startLocation);
-const feature = new Feature(geom);
-feature.setStyle(new Style({
-  image: new CircleStyle({
-    radius: 7,
-    fill: new Fill({color: 'red'}),
-    stroke: new Stroke({
-      color: 'white',
-      width: 1
-    })
-  })
-}));
-vectorSource.addFeature(feature);
-
-
-// Define all styles for animation features
-const styles = {
-  'route': new Style({
-    stroke: new Stroke({
-      width: 6,
-      color: [50, 112, 14, 0.89],
-    }),
-  }),
-  'icon': new Style({
-    image: new Icon({
-      anchor: [0.5, 1],
-      src: './train-stop.png',
-    }),
-  }),
-  'geoMarker': new Style({
-    image: new CircleStyle({
-      radius: 7,
-      fill: new Fill({color: 'black'}),
-      stroke: new Stroke({
-        color: 'white',
-        width: 2,
-      }),
-    }),
-  }),
-};
- */
 
 
 /* 
@@ -415,11 +421,6 @@ console.log('hurra! '+mtest.myDateTime());
 */
 
 
-var connected = false;
-
-
-const dotOne = document.getElementById('dot-one');
-const dotTwo = document.getElementById('dot-two');
 
 
 
@@ -427,7 +428,11 @@ const dotTwo = document.getElementById('dot-two');
 
 
 
-// UTILITY FUNCTIONS
+
+
+/*
+ * UTILITY FUNCTIONS
+ */
 
 function sanitizeString(str){
   str = str.replace(/[^a-z0-9áéíóúñü \.,_-]/gim,"");
