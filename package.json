@@ -4,6 +4,7 @@
   "description": "This is the README file.",
   "scripts": {
     "dev": "parcel src/index.html",
+    "tcp": "node src/js/raw_server.js",
     "build": "parcel build --public-url ./ src/index.html"
   },
   "repository": {
