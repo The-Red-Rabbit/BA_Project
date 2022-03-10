@@ -17,6 +17,8 @@ import GeoJSON from 'ol/format/GeoJSON';
 
 var hasWSConnection = false;
 var socket;
+// Load default values
+const { app } = require('./config');
 
 
 /* 
@@ -35,7 +37,7 @@ const tcpBttn = document.getElementById('tcp-bttn');
  * OPEN LAYERS
  */
 
-var startLocation = fromLonLat([13.369402, 52.525084]);
+var startLocation = fromLonLat([app.startLon, app.startLat]);
 
 // Define visual tile layer (streets, terrain, etc.)
 const tileLayer = new TileLayer({
@@ -167,7 +169,8 @@ tcpBttn.addEventListener('click', function() {
     tcpBttn.textContent = 'Verbindungsaufbau..';
 
     //socket = new WebSocket('wss://redr.uber.space/ep');
-    socket = new WebSocket('ws://localhost:8080');
+    //socket = new WebSocket('ws://localhost:8080');
+    socket = new WebSocket(`ws://${app.host}:${app.port}`);
     
     socket.onopen = function(e) {
       console.log("[ws-open] Connection established. Sending request...");

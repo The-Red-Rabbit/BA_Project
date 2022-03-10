@@ -1,6 +1,8 @@
 // Require Node-Modules
 var ws = require('ws');
 var net = require('net');
+// Load default values
+const { svr } = require('./config');
 
 // Debug
 //var asciichart = require('asciichart');
@@ -29,12 +31,12 @@ function debugSimulinkY(wsc) {
 var connected = false;
 
 // Create Websocket-Server
-const wss = new ws.WebSocketServer({ port: 8080 });
+const wss = new ws.WebSocketServer({ port: svr.wsPort });
 console.log('WS-Server:  %o', wss.address());
 
-// Create TCP-Server and listen on Port 42640
+// Create TCP-Server and listen
 const server = net.createServer();
-server.listen(42640, function () {
+server.listen(svr.tcpPort, function () {
     console.log('TCP-Server: %o', server.address());
 });
 
