@@ -10,14 +10,32 @@ View a live Demo of the current state of the project in your browser. Please not
 
 ## Commands
 
+### Local Server
+
 Run Parcel and start a webserver:
 ```
 npm run dev
 ```
+Run NodeJS and start the TCP-server:
+```
+npm run tcp
+```
 
 ## Description
 
-This is the description.
+This is the folder- & file-structure:
+```
+src/
+├── css/
+│   └── style.css
+├── js/
+│   ├── main.js
+│   ├── raw_server.js
+│   └── train-stop.png
+└── index.html
+```
+The `main.js` script is embeded in the `index.html` file and is responsible for rendering the map and other frontend tasks. The `raw_server.js` runs on the server and has no UI. It serves as an interface between the application and Matlab/Simulink.
+
 
 ## Third party libaries
 

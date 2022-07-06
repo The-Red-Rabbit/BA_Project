@@ -1,18 +1,42 @@
 // Require Node-Modules
 var ws = require('ws');
 var net = require('net');
+// Load default values
+const { svr } = require('./config');
+
+// Debug
 //var asciichart = require('asciichart');
+const debugBuffer = Buffer.alloc(15);
+const debugArrX = [0.0, 1.3, 2.4, 3.5, 4.6];
+const debugArrY = [0.0, 0.6, 1.7, 2.8, 3.9];
+var debugIntvX;
+var debugIntvY;
+var debugI = 0;
+function debugSimulinkX(wsc) {
+    debugBuffer.writeDoubleBE(debugArrX[debugI], 0);
+    wsc.send(debugBuffer.readDoubleBE());
+}
+function debugSimulinkY(wsc) {
+    debugBuffer.writeDoubleBE(debugArrY[debugI], 0);
+    wsc.send(debugBuffer.readDoubleBE());
+    debugI++;
+    if (debugI >= debugArrX.length) {
+        clearInterval(debugIntvX);
+        clearInterval(debugIntvY);
+        debugI = 0;
+    }
+}
 
 // Frontend <-> Backend connection status
 var connected = false;
 
 // Create Websocket-Server
-const wss = new ws.WebSocketServer({ port: 8080 });
+const wss = new ws.WebSocketServer({ port: svr.wsPort });
 console.log('WS-Server:  %o', wss.address());
 
-// Create TCP-Server and listen on Port 42640
+// Create TCP-Server and listen
 const server = net.createServer();
-server.listen(42640, function () {
+server.listen(svr.tcpPort, function () {
     console.log('TCP-Server: %o', server.address());
 });
 
@@ -25,12 +49,18 @@ wss.on('connection', function connection(ws) {
         if (data = 'connection request') {
             ws.send('request ok');
             connected = true;
+            // Debug
+            debugIntvX = setInterval(debugSimulinkX, 500, ws);
+            setTimeout((wscref) => {
+                debugIntvY = setInterval(debugSimulinkY, 500, wscref);
+            }, 250, ws);
+            
         } else {
             console.log('unknown request');
         }
     });
-    ws.on('close', function close(foo) {
-        console.log('WS connection closed %o', foo);
+    ws.on('close', function close(code, msg) {
+        console.log('WS connection closed %o %s', code, msg.toString('utf-8'));
         connected = false;
     });
     // Event: TCP-Connection established

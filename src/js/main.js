@@ -6,16 +6,38 @@ import Point from 'ol/geom/Point';
 import {circular} from 'ol/geom/Polygon';
 import Polyline from 'ol/format/Polyline';
 import {Circle as CircleStyle, Fill, Icon, Stroke, Style} from 'ol/style';
-import {fromLonLat} from 'ol/proj';
+import {fromLonLat, transform} from 'ol/proj';
 import {getVectorContext} from 'ol/render';
 import GeoJSON from 'ol/format/GeoJSON';
 
 
+/* 
+ * VARIABLES
+ */
 
-// Load input-data and pick arbitrary location for now
-var inputData = require('./data/input-data.json');
-var lon = inputData['startLocations'][0]['lon'];
-var lat = inputData['startLocations'][0]['lat'];
+var hasWSConnection = false;
+var socket;
+// Load default values
+const { app } = require('./config');
+
+
+/* 
+ * UI ELEMENTS
+ */
+
+const startCoordPopup = document.getElementById('startcoord-popup');
+const startCoordInput = document.getElementById('startcoord-input');
+const startCoordBttn = document.getElementById('startcoord-bttn');
+const dotOne = document.getElementById('dot-one');
+const dotTwo = document.getElementById('dot-two');
+const tcpBttn = document.getElementById('tcp-bttn');
+
+
+/* 
+ * OPEN LAYERS
+ */
+
+var startLocation = fromLonLat([app.startLon, app.startLat]);
 
 // Define visual tile layer (streets, terrain, etc.)
 const tileLayer = new TileLayer({
@@ -30,6 +52,12 @@ const vectorLayer = new VectorLayer({
   source: vectorSource
 });
 
+// Define view with start-location
+const view = new View({
+  center: startLocation,
+  zoom: 16
+});
+
 // Define map and focus start-location
 const map = new Map({
   target: 'map-container',
@@ -37,51 +65,10 @@ const map = new Map({
     tileLayer,
     vectorLayer
   ],
-  view: new View({
-    center: fromLonLat([lat, lon]),
-    zoom: 16,
-  }),
+  view: view
 });
 
-// Add and render examples
-const geom = new Point(fromLonLat([lat, lon]));
-const feature = new Feature(geom);
-feature.setStyle(new Style({
-  image: new CircleStyle({
-    radius: 7,
-    fill: new Fill({color: 'red'}),
-    stroke: new Stroke({
-      color: 'white',
-      width: 1
-    })
-  })
-}));
-vectorSource.addFeature(feature);
-
-// Get GPS location of the user
-/*
-navigator.geolocation.watchPosition(
-  function (pos) {
-    const coords = [pos.coords.longitude, pos.coords.latitude];
-    const accuracy = circular(coords, pos.coords.accuracy);
-    vectorSource.clear(true);
-    vectorSource.addFeatures([
-      new Feature(
-        accuracy.transform('EPSG:4326', map.getView().getProjection())
-      ),
-      new Feature(new Point(fromLonLat(coords))),
-    ]);
-  },
-  function (error) {
-    alert(`ERROR: ${error.message}`);
-  },
-  {
-    enableHighAccuracy: true,
-  }
-);
-*/
-
-// Define all styles for animation features
+// Define feature-styles
 const styles = {
   'route': new Style({
     stroke: new Stroke({
@@ -89,13 +76,13 @@ const styles = {
       color: [50, 112, 14, 0.89],
     }),
   }),
-  'icon': new Style({
+  'trainstop': new Style({
     image: new Icon({
       anchor: [0.5, 1],
       src: './train-stop.png',
     }),
   }),
-  'geoMarker': new Style({
+  'train': new Style({
     image: new CircleStyle({
       radius: 7,
       fill: new Fill({color: 'black'}),
@@ -104,12 +91,168 @@ const styles = {
         width: 2,
       }),
     }),
-  }),
+  })
 };
 
+// Define features
+const startMarker = new Feature({
+  type: 'trainstop',
+  geometry: new Point(startLocation)
+});
+
+const trainPosition = startMarker.getGeometry().clone();
+const trainMarker = new Feature({
+  type: 'train',
+  geometry: trainPosition,
+});
+
+// Add and display features
+vectorSource.addFeatures([startMarker, trainMarker]);
+vectorLayer.setStyle(function (feature) {
+  return styles[feature.get('type')];
+});
+
+
+/* 
+ * FUNCTIONS
+ */
+
+function moveTrain(dX, dY) {
+  console.log('Debug moveTrain - Coords: %O - Deltas: x=%f y=%f', trainPosition.getCoordinates(), dX, dY);
+  trainPosition.setCoordinates([trainPosition.getCoordinates()[0]+dX, trainPosition.getCoordinates()[1]+dY]);
+  trainMarker.setGeometry(trainPosition);
+  vectorLayer.getRenderer().changed();
+  //vectorSource.refresh();
+}
+
+
+/* 
+ * EVENTS
+ */
+
+startCoordBttn.addEventListener('click', function() {
+  // Sanitize input
+  let coordInputValue = sanitizeString(startCoordInput.value);
+  // Check for vaild input
+  let coordArr = coordInputValue.match(/-?[0-9]+\.-?[0-9]+/g);
+  if (coordInputValue && coordArr && coordArr.length == 2) {
+    console.log('valid: %s ; %s', coordArr[0], coordArr[1]);
+    startCoordInput.value = '';
+    triggerPopup('&#9745; Koordinaten gesetzt');
+    // Set new start coordinates
+    startLocation = fromLonLat([parseFloat(coordArr[1]), parseFloat(coordArr[0])]);
+    trainPosition.setCoordinates(startLocation);
+    startMarker.setGeometry(trainPosition);
+    // Move view to new start-location
+    view.animate({
+      center: startLocation,
+      duration: 2000
+    });
+  } else {
+    console.log('invalid');
+    triggerPopup('&#9888; Eingabe fehlerhaft');
+  }
+  function triggerPopup(popupText) {
+    startCoordPopup.innerHTML = popupText;
+    startCoordPopup.classList.add('show');
+    setTimeout(function(){startCoordPopup.classList.remove('show');}, 3000);
+  }
+});
+
+var dataIndex = 1;
+    var prevCoordX = 0;
+    var prevCoordY = 0;
+tcpBttn.addEventListener('click', function() {
+  // Check for existing WS connection
+  if (!hasWSConnection) {
+    // Establish WS connection
+    tcpBttn.textContent = 'Verbindungsaufbau..';
+
+    //socket = new WebSocket('wss://redr.uber.space/ep');
+    //socket = new WebSocket('ws://localhost:8080');
+    socket = new WebSocket(`ws://${app.host}:${app.port}`);
+    
+    socket.onopen = function(e) {
+      console.log("[ws-open] Connection established. Sending request...");
+      // Request connection to server
+      socket.send("connection request");
+    };
+
+    socket.onerror = function(error) {
+      console.log(`[ws-error] %o`, error.target);
+      tcpBttn.textContent = 'Verbindung fehlgeschlagen';
+      dotOne.style.backgroundColor = 'red';
+    };
+
+    socket.onclose = function(event) {
+      console.log('[ws-close] Connection closed: %s %s', event.code, event.reason);
+      tcpBttn.textContent = 'Verbinden';
+      dotOne.classList.remove('dot-pending');
+      dotTwo.classList.remove('dot-pending');
+      hasWSConnection = false;
+    };
+
+    
+    socket.onmessage = function(event) {
+      console.log(`[ws-message] Data No.%s received from server: %o`, dataIndex, event.data);
+      // Check for request answer or data
+      if (event.data == 'request ok') {
+        tcpBttn.textContent = 'Trennen';
+        dotOne.classList.add('dot-pending');
+        dotTwo.classList.add('dot-pending');
+        hasWSConnection = true;
+      } else {
+        // Handle incoming data from simulink
+        //...
+        if (dataIndex%2 == 0) {
+          moveTrain(0, event.data-prevCoordY);
+          prevCoordY = event.data;
+        } else {
+          moveTrain(event.data-prevCoordX, 0);
+          prevCoordX = event.data;
+        }
+        dataIndex++;
+      }
+    };
+  } else {
+    // Terminate WS connection
+    tcpBttn.textContent = 'Verbinden';
+    dotOne.classList.remove('dot-pending');
+    dotTwo.classList.remove('dot-pending');
+    socket.close(1000, 'User terminated the connection');
+    hasWSConnection = false;
+  }
+});
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* 
 // Load a route (String) from a file
 var routeData = require('./data/example-route.json');
 
@@ -177,6 +320,10 @@ const vectorLayerRoute = new VectorLayer({
   },
 });
 map.addLayer(vectorLayerRoute);
+
+ */
+
+
 
 /*
 // Testing moving the train manualy in east direction; Button is disabled for now
@@ -267,13 +414,6 @@ const vectorLayerGeoj = new VectorLayer({
 });
 map.addLayer(vectorLayerGeoj);
 */
-import Modify from 'ol/interaction/Modify';
-map.addInteraction(
-  new Modify({
-    source: vectorSourceRoute,
-  })
-);
-
 
 
 
@@ -284,49 +424,20 @@ console.log('hurra! '+mtest.myDateTime());
 */
 
 
-var connected = false;
-const connectButton = document.getElementById('tcp-bttn');
-
-const dotOne = document.getElementById('dot-one');
-const dotTwo = document.getElementById('dot-two');
-
-
-// Testing Websockets
 
 
 
-connectButton.addEventListener('click', function() {
-  connectButton.textContent = 'Verbindungsaufbau..';
-  dotOne.style.backgroundColor = 'yellow';
 
 
 
-  //let socket = new WebSocket('wss://redr.uber.space/ep');
-  let socket = new WebSocket('ws://localhost:8080');
 
-  
 
-  socket.onopen = function(e) {
-    console.log("[open] Connection established");
-    console.log("Sending to server");
-    socket.send("connection request");
-  };
 
-  socket.onerror = function(error) {
-    console.log(`[error] ${error.message}`);
-    connectButton.textContent = 'Verbindung fehlgeschlagen';
-    dotOne.style.backgroundColor = 'red';
-  };
+/*
+ * UTILITY FUNCTIONS
+ */
 
-  socket.onmessage = function(event) {
-    console.log(`[message] Data received from server: ${event.data}`);
-    if (event.data = 'request ok') {
-      connectButton.textContent = 'Trennen';
-      dotOne.classList.add('dot-pending');
-      dotTwo.classList.add('dot-pending');
-    } else {
-      
-    }
-  };
-
-});
+function sanitizeString(str){
+  str = str.replace(/[^a-z0-9áéíóúñü \.,_-]/gim,"");
+  return str.trim();
+}
