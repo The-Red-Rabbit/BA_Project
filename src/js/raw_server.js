@@ -7,18 +7,19 @@ const { svr } = require('./config');
 // Debug
 //var asciichart = require('asciichart');
 const debugBuffer = Buffer.alloc(15);
-const debugArrX = [0.0, 1.3, 2.4, 3.5, 4.6];
-const debugArrY = [0.0, 0.6, 1.7, 2.8, 3.9];
+const debugArrX = [0.0, 0.0, 0.0, 0.0, 100.0];
+const debugArrY = [0.0, 0.0, 0.0, 0.0, 0.0];
 var debugIntvX;
 var debugIntvY;
 var debugI = 0;
 function debugSimulinkX(wsc) {
     debugBuffer.writeDoubleBE(debugArrX[debugI], 0);
-    wsc.send(debugBuffer.readDoubleBE());
+    //wsc.send(debugBuffer.readDoubleBE());
 }
 function debugSimulinkY(wsc) {
     debugBuffer.writeDoubleBE(debugArrY[debugI], 0);
-    wsc.send(debugBuffer.readDoubleBE());
+    //wsc.send(debugBuffer.readDoubleBE());
+    wsc.send(JSON.stringify([debugArrX[debugI], debugArrY[debugI]]));
     debugI++;
     if (debugI >= debugArrX.length) {
         clearInterval(debugIntvX);
@@ -68,14 +69,41 @@ wss.on('connection', function connection(ws) {
         var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
         console.log('New client connection from %s', remoteAddress);
         // Event: Data from Simulator received
+        var stepLength = 0;
+        const stepRate = 5;
+        var stepFlag = false;
+        var dataIndex = 0;
+        var prevCoord = [0, 0];
+        var currCoord = [0, 0];
         conn.on('data', function dataTCP(d) {
-            console.log('Data: '+d.readDoubleBE());
-            // Only proceed if there is already a connection to the Frontend
-            if (connected) {
-                ws.send(d.readDoubleBE());
+            console.log('Data #'+dataIndex+': '+d.readDoubleBE());
+            if (stepLength == stepRate) {
+                stepFlag = true;
+                stepLength++;
             } else {
-                console.log('Data cannot be forwarded to Frontend. No Websocket-Connection established.');
+                if (stepLength == (stepRate+1)) {   //is followup?
+                    stepFlag = true;
+                    stepLength = 0;
+                }
+                stepFlag = false;
+                stepLength++;
             }
+
+            // Only proceed if there is already a connection to the Frontend
+            if (connected && stepFlag) {
+                if (dataIndex == 0) {       // Set X-Coordinate
+                    currCoord[0] = d.readDoubleBE();
+                    dataIndex = 1;
+                } else {                    // Set Y-Coordinate
+                    currCoord[1] = d.readDoubleBE();
+                    dataIndex = 0;
+                    // Send to frontend
+                    ws.send(JSON.stringify(currCoord));
+                }
+            } else {
+                //console.log('Data cannot be forwarded to Frontend. No Websocket-Connection established.');
+            }
+            
         });
         // Event: Connection from Simulator closed
         conn.once('close', function closeTCP() {

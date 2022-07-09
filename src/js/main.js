@@ -106,6 +106,18 @@ const trainMarker = new Feature({
   geometry: trainPosition,
 });
 
+//Debug markers
+var debugMarkers = [];
+for (let i = 0; i < 25; i++) {
+  debugMarkers.push(new Feature({
+    type: 'train',
+    geometry: trainPosition
+  }));
+}
+vectorSource.addFeatures(debugMarkers);
+var dMarkerCount = 0;
+var dFunctionCount = 0;
+
 // Add and display features
 vectorSource.addFeatures([startMarker, trainMarker]);
 vectorLayer.setStyle(function (feature) {
@@ -116,10 +128,19 @@ vectorLayer.setStyle(function (feature) {
 /* 
  * FUNCTIONS
  */
-
+const originCoords = trainPosition.getCoordinates();
 function moveTrain(dX, dY) {
-  console.log('Debug moveTrain - Coords: %O - Deltas: x=%f y=%f', trainPosition.getCoordinates(), dX, dY);
-  trainPosition.setCoordinates([trainPosition.getCoordinates()[0]+dX, trainPosition.getCoordinates()[1]+dY]);
+  console.log('Debug #%d moveTrain - Coords: %O - Deltas: x=%f y=%f', dFunctionCount, trainPosition.getCoordinates(), dX, dY);
+  if (dFunctionCount%100 == 0) {
+    if (dMarkerCount < debugMarkers.length-1) {
+      debugMarkers[dMarkerCount].setGeometry(new Point([originCoords[0]+dX, originCoords[1]+dY]));
+      dMarkerCount++;
+      console.log('Debug marker placed');
+    }
+  }
+  dFunctionCount++;
+  
+  trainPosition.setCoordinates([originCoords[0]+dX, originCoords[1]+dY]);
   trainMarker.setGeometry(trainPosition);
   vectorLayer.getRenderer().changed();
   //vectorSource.refresh();
@@ -130,6 +151,7 @@ function moveTrain(dX, dY) {
  * EVENTS
  */
 
+// Event: Set start-coordinates
 startCoordBttn.addEventListener('click', function() {
   // Sanitize input
   let coordInputValue = sanitizeString(startCoordInput.value);
@@ -159,9 +181,7 @@ startCoordBttn.addEventListener('click', function() {
   }
 });
 
-var dataIndex = 1;
-    var prevCoordX = 0;
-    var prevCoordY = 0;
+// Event: Establish and handle WS-connection
 tcpBttn.addEventListener('click', function() {
   // Check for existing WS connection
   if (!hasWSConnection) {
@@ -194,24 +214,19 @@ tcpBttn.addEventListener('click', function() {
 
     
     socket.onmessage = function(event) {
-      console.log(`[ws-message] Data No.%s received from server: %o`, dataIndex, event.data);
+      console.log(`[ws-message] Data received from server: %s`, event.data);
       // Check for request answer or data
       if (event.data == 'request ok') {
         tcpBttn.textContent = 'Trennen';
         dotOne.classList.add('dot-pending');
         dotTwo.classList.add('dot-pending');
         hasWSConnection = true;
-      } else {
+        console.log('Connection established!');
+      }
+      var recCoords = JSON.parse(event.data);
+      if (recCoords.length == 2) {
         // Handle incoming data from simulink
-        //...
-        if (dataIndex%2 == 0) {
-          moveTrain(0, event.data-prevCoordY);
-          prevCoordY = event.data;
-        } else {
-          moveTrain(event.data-prevCoordX, 0);
-          prevCoordX = event.data;
-        }
-        dataIndex++;
+        moveTrain(recCoords[0], recCoords[1]);
       }
     };
   } else {
@@ -223,13 +238,6 @@ tcpBttn.addEventListener('click', function() {
     hasWSConnection = false;
   }
 });
-
-
-
-
-
-
-
 
 
 
