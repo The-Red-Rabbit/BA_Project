@@ -2,31 +2,9 @@
 var ws = require('ws');
 var net = require('net');
 // Load default values
-const { svr } = require('./config');
+const { svr, app } = require('./config');
 
-// Debug
-//var asciichart = require('asciichart');
-const debugBuffer = Buffer.alloc(15);
-const debugArrX = [0.0, 0.0, 0.0, 0.0, 100.0];
-const debugArrY = [0.0, 0.0, 0.0, 0.0, 0.0];
-var debugIntvX;
-var debugIntvY;
-var debugI = 0;
-function debugSimulinkX(wsc) {
-    debugBuffer.writeDoubleBE(debugArrX[debugI], 0);
-    //wsc.send(debugBuffer.readDoubleBE());
-}
-function debugSimulinkY(wsc) {
-    debugBuffer.writeDoubleBE(debugArrY[debugI], 0);
-    //wsc.send(debugBuffer.readDoubleBE());
-    wsc.send(JSON.stringify([debugArrX[debugI], debugArrY[debugI]]));
-    debugI++;
-    if (debugI >= debugArrX.length) {
-        clearInterval(debugIntvX);
-        clearInterval(debugIntvY);
-        debugI = 0;
-    }
-}
+
 
 // Frontend <-> Backend connection status
 var connected = false;
@@ -45,17 +23,10 @@ server.listen(svr.tcpPort, function () {
 wss.on('connection', function connection(ws) {
     // Event: Data from Frontend received
     ws.on('message', function message(data) {
-        console.log('WS data received: %s', data);
         // Handle connection request from Frontend
         if (data = 'connection request') {
             ws.send('request ok');
             connected = true;
-            // Debug
-            debugIntvX = setInterval(debugSimulinkX, 500, ws);
-            setTimeout((wscref) => {
-                debugIntvY = setInterval(debugSimulinkY, 500, wscref);
-            }, 250, ws);
-            
         } else {
             console.log('unknown request');
         }
@@ -67,47 +38,49 @@ wss.on('connection', function connection(ws) {
     // Event: TCP-Connection established
     server.on('connection', function connectionTCP(conn) {
         var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
-        console.log('New client connection from %s', remoteAddress);
+        console.log('New Simulink connection (%s)', remoteAddress);
         // Event: Data from Simulator received
         var stepLength = 0;
         const stepRate = 5;
-        var stepFlag = false;
         var dataIndex = 0;
-        var prevCoord = [0, 0];
-        var currCoord = [0, 0];
+        var deltas = [0.0, 0.0];
+        var currCoord = [0.0, 0.0];
         conn.on('data', function dataTCP(d) {
-            console.log('Data #'+dataIndex+': '+d.readDoubleBE());
-            if (stepLength == stepRate) {
-                stepFlag = true;
-                stepLength++;
-            } else {
-                if (stepLength == (stepRate+1)) {   //is followup?
-                    stepFlag = true;
-                    stepLength = 0;
-                }
-                stepFlag = false;
-                stepLength++;
-            }
-
             // Only proceed if there is already a connection to the Frontend
-            if (connected && stepFlag) {
+            if (connected) {
                 if (dataIndex == 0) {       // Set X-Coordinate
-                    currCoord[0] = d.readDoubleBE();
+                    deltas[1] = d.readDoubleBE();
+                    deltas[1] *= -1;
                     dataIndex = 1;
                 } else {                    // Set Y-Coordinate
-                    currCoord[1] = d.readDoubleBE();
+                    deltas[0] = d.readDoubleBE();
+                    deltas[0] *= -1;
                     dataIndex = 0;
-                    // Send to frontend
-                    ws.send(JSON.stringify(currCoord));
+                    // Calculate new coordinates TODO implement changing start pos
+                    currCoord[0] = ( 71.5 * app.startLon - (deltas[0]/1000)) / 71.5
+                    currCoord[1] = ( 111.3 * app.startLat - (deltas[1]/1000)) / 111.3
+                    if (stepLength == stepRate) {
+                        // Send to frontend
+                        ws.send(JSON.stringify(currCoord));
+                        stepLength = 0;
+
+                        console.log('Datapoint:');
+                        console.group();
+                        console.log('Deltas:\nx = '+deltas[0]+'\ny = '+deltas[1]+'\nCoords:\nLon = '+currCoord[0]+'\nLat = '+currCoord[1]);
+                        console.groupEnd();
+                    } else {
+                        stepLength++;
+                    }
+                
                 }
             } else {
-                //console.log('Data cannot be forwarded to Frontend. No Websocket-Connection established.');
+                console.log('Data cannot be forwarded to Frontend. No Websocket-Connection established.');
             }
             
         });
         // Event: Connection from Simulator closed
         conn.once('close', function closeTCP() {
-            console.log('Connection from %s closed', remoteAddress);
+            console.log('Connection from Simulink closed (%s)', remoteAddress);
         });
         // Event: Catch TCP connection error
         conn.on('error', function errorTCP(e) {
@@ -115,79 +88,3 @@ wss.on('connection', function connection(ws) {
         });
     });
 });
-
-
-
-
-/*
-
-
-
-
-
-function handleConnection(conn) {
-    var dataPointCount = 0;
-    var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
-    console.log('new client connection from %s', remoteAddress);
-
-    conn.on('data', onConnData);
-    conn.once('close', onConnClose);
-    conn.on('error', onConnError);
-
-    
-    //conn.setEncoding('hex');
-
-    var outGraph = [];
-
-    function onConnData(d) {
-        var outString = '';
-        
-        for (let index = 0; index < d.length; index++) {
-            outString += d[index];
-            if (index%2 != 0) {
-                outString += ' ';
-            }
-        }
-        
-        outGraph.push(d.readDoubleBE());
-
-        dataPointCount++;
-        console.log('Datapoint No.: %d', dataPointCount);
-
-
-        console.log('Debug: '+d.readDoubleBE());
-        for (x of d.entries()) {
-            //console.log(x);
-        }
-
-        if (connected) {
-            
-        }
-
-
-
-        console.log('connection data from %s: %j\n', remoteAddress, outString);
-        conn.write(d);
-    }
-
-    function onConnClose() {  
-        console.log('connection from %s closed', remoteAddress);  
-
-        if (outGraph.length > 50) {
-            outGraph = outGraph.slice(0,49);
-        }
-        //console.log(asciichart.plot(outGraph));
-        outGraph = [];
-    }
-
-    function onConnError(err) {  
-        console.log('Connection %s error: %s', remoteAddress, err.message);  
-    }  
-}
-
-
-
-
-
-
-*/

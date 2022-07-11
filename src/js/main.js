@@ -6,7 +6,7 @@ import Point from 'ol/geom/Point';
 import {circular} from 'ol/geom/Polygon';
 import Polyline from 'ol/format/Polyline';
 import {Circle as CircleStyle, Fill, Icon, Stroke, Style} from 'ol/style';
-import {fromLonLat, transform} from 'ol/proj';
+import {fromLonLat, toLonLat, transform} from 'ol/proj';
 import {getVectorContext} from 'ol/render';
 import GeoJSON from 'ol/format/GeoJSON';
 
@@ -91,6 +91,16 @@ const styles = {
         width: 2,
       }),
     }),
+  }),
+  'debugtrain': new Style({
+    image: new CircleStyle({
+      radius: 7,
+      fill: new Fill({color: 'red'}),
+      stroke: new Stroke({
+        color: 'white',
+        width: 2,
+      }),
+    }),
   })
 };
 
@@ -110,8 +120,8 @@ const trainMarker = new Feature({
 var debugMarkers = [];
 for (let i = 0; i < 25; i++) {
   debugMarkers.push(new Feature({
-    type: 'train',
-    geometry: trainPosition
+    type: 'debugtrain',
+    geometry: new Point(startLocation)
   }));
 }
 vectorSource.addFeatures(debugMarkers);
@@ -128,19 +138,20 @@ vectorLayer.setStyle(function (feature) {
 /* 
  * FUNCTIONS
  */
-const originCoords = trainPosition.getCoordinates();
+
 function moveTrain(dX, dY) {
-  console.log('Debug #%d moveTrain - Coords: %O - Deltas: x=%f y=%f', dFunctionCount, trainPosition.getCoordinates(), dX, dY);
-  if (dFunctionCount%100 == 0) {
+  console.log('Debug #%d moveTrain - Coords: x=%f y=%f', dFunctionCount, dX, dY);
+  if (dFunctionCount > 2 && dFunctionCount%10 == 0) {
     if (dMarkerCount < debugMarkers.length-1) {
-      debugMarkers[dMarkerCount].setGeometry(new Point([originCoords[0]+dX, originCoords[1]+dY]));
+      debugMarkers[dMarkerCount].setGeometry(new Point(fromLonLat([dX, dY])));
       dMarkerCount++;
-      console.log('Debug marker placed');
+    } else {
+      dMarkerCount = 0;
     }
   }
   dFunctionCount++;
   
-  trainPosition.setCoordinates([originCoords[0]+dX, originCoords[1]+dY]);
+  trainPosition.setCoordinates(fromLonLat([dX, dY]));
   trainMarker.setGeometry(trainPosition);
   vectorLayer.getRenderer().changed();
   //vectorSource.refresh();
@@ -189,7 +200,6 @@ tcpBttn.addEventListener('click', function() {
     tcpBttn.textContent = 'Verbindungsaufbau..';
 
     //socket = new WebSocket('wss://redr.uber.space/ep');
-    //socket = new WebSocket('ws://localhost:8080');
     socket = new WebSocket(`ws://${app.host}:${app.port}`);
     
     socket.onopen = function(e) {
@@ -238,207 +248,6 @@ tcpBttn.addEventListener('click', function() {
     hasWSConnection = false;
   }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* 
-// Load a route (String) from a file
-var routeData = require('./data/example-route.json');
-
-const polygon = require('./data/features.json');
-const encode = require('geojson-polyline').encode
-const encoded = encode(polygon);
-console.log(encoded.features[0].geometry.coordinates);
-console.log(routeData.routes[0].geometry);
-
-const route = new Polyline({
-  factor: 1e5,
-}).readGeometry(encoded.features[0].geometry.coordinates, {
-  dataProjection: 'EPSG:4326',
-  featureProjection: 'EPSG:3857',
-});
-
-var geoJ = new GeoJSON();
-const vectorSourceGeoj = new VectorSource({
-  format: new GeoJSON(),
-  url: './features.json',
-});
-
-
-
-
-const mroute = new Polyline({
-  factor: 1e5,
-}).readGeometry(vectorSourceGeoj.geometry, {
-  dataProjection: 'EPSG:4326',
-  featureProjection: 'EPSG:3857',
-});
-const mrouteFeature = new Feature({
-  type: 'route'
-});
-mrouteFeature.setGeometry(mroute);
-
-// Define all features
-const routeFeature = new Feature({
-  type: 'route',
-  geometry: route,
-});
-const startMarker = new Feature({
-  type: 'icon',
-  geometry: new Point(route.getFirstCoordinate()),
-});
-const endMarker = new Feature({
-  type: 'icon',
-  geometry: new Point(route.getLastCoordinate()),
-});
-const position = startMarker.getGeometry().clone();
-const geoMarker = new Feature({
-  type: 'geoMarker',
-  geometry: position,
-});
-
-// Define a new VectorSource
-const vectorSourceRoute = new VectorSource({
-  features: [routeFeature, geoMarker, startMarker, endMarker],
-});
-// Define, populate and add a new VectorLayer
-const vectorLayerRoute = new VectorLayer({
-  source: vectorSourceRoute,
-  style: function (feature) {
-    return styles[feature.get('type')];
-  },
-});
-map.addLayer(vectorLayerRoute);
-
- */
-
-
-
-/*
-// Testing moving the train manualy in east direction; Button is disabled for now
-const moveButton = document.getElementById('move-train');
-moveButton.style.display = 'none';
-moveButton.addEventListener('click', function() {
-  console.log('Debug move-bttn Click!\n'+position.getCoordinates());
-  position.setCoordinates([position.getCoordinates()[0]+100, position.getCoordinates()[1]]);
-  geoMarker.setGeometry(position);
-});
-
-
-// Copypasta Animation-Feature
-
-const speedInput = document.getElementById('speed');
-const startButton = document.getElementById('start-train');
-let animating = false;
-let distance = 0;
-let lastTime;
-
-function moveFeature(event) {
-  const speed = Number(speedInput.value);
-  const time = event.frameState.time;
-  const elapsedTime = time - lastTime;
-  distance = (distance + (speed * elapsedTime) / 1e5) % 2;
-  lastTime = time;
-  
-  const currentCoordinate = route.getCoordinateAt(
-    distance > 1 ? 2 - distance : distance
-  );
-  position.setCoordinates(currentCoordinate);
-  const vectorContext = getVectorContext(event);
-  vectorContext.setStyle(new Style({
-    image: new CircleStyle({
-      radius: 7,
-      fill: new Fill({color: 'black'}),
-      stroke: new Stroke({
-        color: 'white',
-        width: 2
-      })
-    })
-  }));
-  vectorContext.drawGeometry(position);
-  // tell OpenLayers to continue the postrender animation
-  map.render();
-}
-
-function startAnimation() {
-  animating = true;
-  lastTime = Date.now();
-  startButton.textContent = 'Stop Animation';
-  vectorLayerRoute.on('postrender', moveFeature);
-  // hide geoMarker and trigger map render through change event
-  geoMarker.setGeometry(null);
-}
-
-function stopAnimation() {
-  animating = false;
-  startButton.textContent = 'Start';
-
-  // Keep marker at current animation position
-  geoMarker.setGeometry(position);
-  vectorLayerRoute.un('postrender', moveFeature);
-}
-
-startButton.addEventListener('click', function() {
-  console.log('Click!');
-  if (animating) {
-    stopAnimation();
-  } else {
-    startAnimation();
-  }
-});
-*/
-
-
-/*
-const example = require('bundle-text:./data/route-data.csv');
- 
-console.log(example);
-*/
-
-
-/*
-// Define GEOJSON vector layer
-const vectorLayerGeoj = new VectorLayer({
-  source: vectorSourceGeoj
-});
-map.addLayer(vectorLayerGeoj);
-*/
-
-
-
-/*
-// Testing custom node modules
-var mtest = require('./testmodul.js');
-console.log('hurra! '+mtest.myDateTime());
-*/
-
-
-
-
-
-
-
-
-
 
 
 /*
