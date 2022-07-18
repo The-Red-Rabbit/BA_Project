@@ -5,9 +5,9 @@ var net = require('net');
 const { svr, app } = require('./config');
 
 
-
-// Frontend <-> Backend connection status
-var connected = false;
+// VARIABLES
+var connected = false;   // Frontend <-> Backend connection status
+var deltaBuffer = [0.0, 0.0, 0.0, 0.0];
 
 // Create Websocket-Server
 const wss = new ws.WebSocketServer({ port: svr.wsPort });
@@ -48,6 +48,20 @@ wss.on('connection', function connection(ws) {
         conn.on('data', function dataTCP(d) {
             // Only proceed if there is already a connection to the Frontend
             if (connected) {
+              // Store 2 coordinates in buffer
+              deltaBuffer[dataIndex] = d.readDoubleBE();
+              if (dataIndex == 3) {
+                // Check for x, y mismatch 
+                if (isSimilar(deltaBuffer[0], deltaBuffer[1]) || isSimilar(deltaBuffer[2], deltaBuffer[3])) {
+                  console.log('Possible x, y mismatch detected:');
+                  console.info(deltaBuffer);
+                }
+                dataIndex = 0;
+              } else {
+                dataIndex++;
+              }
+              
+              
                 if (dataIndex == 0) {       // Set X-Coordinate
                     deltas[1] = d.readDoubleBE();
                     deltas[1] *= -1;
@@ -63,11 +77,12 @@ wss.on('connection', function connection(ws) {
                         // Send to frontend
                         ws.send(JSON.stringify(currCoord));
                         stepLength = 0;
-
+                        /*
                         console.log('Datapoint:');
                         console.group();
                         console.log('Deltas:\nx = '+deltas[0]+'\ny = '+deltas[1]+'\nCoords:\nLon = '+currCoord[0]+'\nLat = '+currCoord[1]);
                         console.groupEnd();
+                        */
                     } else {
                         stepLength++;
                     }
@@ -88,3 +103,12 @@ wss.on('connection', function connection(ws) {
         });
     });
 });
+
+// FUNCTIONS
+function isSimilar(a, b) {
+  if (a <= 10) {
+    return false;
+  } else {
+    return a >= b-10 && a<= b+10;
+  }
+}
