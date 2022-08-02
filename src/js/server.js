@@ -39,21 +39,26 @@ wss.on('connection', function connection(ws) {
         var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
         console.log('New Simulink connection (%s)', remoteAddress);
         // Event: Data from Simulator received
-        var deltas = [0.0, 0.0];
+        var deltas = [0.0, 0.0, 0.0, 0.0];
         var currCoord = [0.0, 0.0];
         conn.on('data', function dataTCP(d) {
             // Only proceed if there is already a connection to the Frontend
             if (connected) {
-
-
-                console.log(d.readDoubleBE(0));
-                console.log(d.readDoubleBE(8));
+                console.log('x: %d -- y: %d', Number((d.readDoubleBE(0)).toFixed(3)), Number((d.readDoubleBE(8)).toFixed(3)));
                 deltas[0] = d.readDoubleBE(0) * -1;
                 deltas[1] = d.readDoubleBE(8) * -1;
-                // Calculate new coordinates TODO implement changing start pos
-                currCoord[0] = ( 71.5 * app.startLon - (deltas[0]/1000)) / 71.5
-                currCoord[1] = ( 111.3 * app.startLat - (deltas[1]/1000)) / 111.3
-                ws.send(JSON.stringify(currCoord));
+                console.log('Diff: %d -- %d', Math.abs(deltas[0]-deltas[2]), Math.abs(deltas[1]-deltas[3]));
+                if (Math.abs(deltas[0]-deltas[2])>1 || Math.abs(deltas[1]-deltas[3])>1) {
+                    // Calculate new coordinates TODO implement changing start pos
+                    currCoord[0] = ( 67.924 * app.startLon - (deltas[0]/1000)) / 67.924
+                    currCoord[1] = ( 111.317 * app.startLat - (deltas[1]/1000)) / 111.317
+                    ws.send(JSON.stringify(currCoord));
+                } else {
+                    console.count('discarded');
+                }
+                deltas[2] = deltas[0];
+                deltas[3] = deltas[1];
+                
 
             } else {
                 console.log('Data cannot be forwarded to Frontend. No Websocket-Connection established.');

@@ -8,6 +8,7 @@ import {Circle as CircleStyle, Fill, Icon, Stroke, Style} from 'ol/style';
 import {fromLonLat, toLonLat, transform} from 'ol/proj';
 import {getVectorContext} from 'ol/render';
 import GeoJSON from 'ol/format/GeoJSON';
+import LineString from 'ol/geom/LineString';
 
 
 /* 
@@ -72,7 +73,7 @@ const styles = {
   'route': new Style({
     stroke: new Stroke({
       width: 6,
-      color: [50, 112, 14, 0.89],
+      color: [229, 81, 76, 0.89],
     }),
   }),
   'trainstop': new Style({
@@ -127,6 +128,21 @@ vectorSource.addFeatures(debugMarkers);
 var dMarkerCount = 0;
 var dFunctionCount = 0;
 
+//route
+var currPath = [];
+
+var routeGeom = new LineString(currPath).transform('EPSG:4326', 'EPSG:3857');
+
+var routeFeature = new Feature({
+  type: 'route',
+  geometry: routeGeom
+});
+vectorSource.addFeature(routeFeature);
+var foo = routeGeom.getCoordinates();
+
+
+
+
 // Add and display features
 vectorSource.addFeatures([startMarker, trainMarker]);
 vectorLayer.setStyle(function (feature) {
@@ -139,6 +155,7 @@ vectorLayer.setStyle(function (feature) {
  */
 
 function moveTrain(dX, dY) {
+  /*
   console.log('Debug #%d moveTrain - Coords: x=%f y=%f', dFunctionCount, dX, dY);
   if (dFunctionCount > 2 && dFunctionCount%10 == 0) {
     if (dMarkerCount < debugMarkers.length-1) {
@@ -149,6 +166,12 @@ function moveTrain(dX, dY) {
     }
   }
   dFunctionCount++;
+*/
+
+foo.push(fromLonLat([dX, dY]));
+routeGeom.setCoordinates(foo);
+
+
   
   trainPosition.setCoordinates(fromLonLat([dX, dY]));
   trainMarker.setGeometry(trainPosition);
