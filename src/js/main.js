@@ -164,11 +164,10 @@ function moveTrain(dX, dY) {
 // Event: Set start-coordinates
 startCoordBttn.addEventListener('click', function() {
   // Sanitize input
-  let coordInputValue = sanitizeString(startCoordInput.value);
+  let coordArr = sanitizeString(startCoordInput.value);
   // Check for vaild input
-  let coordArr = coordInputValue.match(/-?[0-9]+\.-?[0-9]+/g);
-  if (coordInputValue && coordArr && coordArr.length == 2) {
-    console.log('valid: %s ; %s', coordArr[0], coordArr[1]);
+  if (coordArr && coordArr.length == 2) {
+    console.log('New valid start-coordinates: %s ; %s', coordArr[0], coordArr[1]);
     startCoordInput.value = '';
     triggerPopup('&#9745; Koordinaten gesetzt');
     // Set new start coordinates
@@ -255,5 +254,5 @@ tcpBttn.addEventListener('click', function() {
 
 function sanitizeString(str){
   str = str.replace(/[^a-z0-9áéíóúñü \.,_-]/gim,"");
-  return str.trim();
+  return str.trim().match(/-?[0-9]+\.-?[0-9]+/g);
 }
