@@ -1,7 +1,6 @@
 import {OSM, Vector as VectorSource} from 'ol/source';
 import {Tile as TileLayer, Vector as VectorLayer} from 'ol/layer';
-import Feature from 'ol/Feature';
-import {Map, View} from 'ol';
+import {Map, View, Feature} from 'ol';
 import Point from 'ol/geom/Point';
 import {circular} from 'ol/geom/Polygon';
 import Polyline from 'ol/format/Polyline';
