@@ -1,13 +1,9 @@
 import {OSM, Vector as VectorSource} from 'ol/source';
 import {Tile as TileLayer, Vector as VectorLayer} from 'ol/layer';
 import {Map, View, Feature} from 'ol';
-import Point from 'ol/geom/Point';
-import {circular} from 'ol/geom/Polygon';
-import Polyline from 'ol/format/Polyline';
+import {Point, LineString} from 'ol/geom';
 import {Circle as CircleStyle, Fill, Icon, Stroke, Style} from 'ol/style';
-import {fromLonLat, toLonLat, transform} from 'ol/proj';
-import {getVectorContext} from 'ol/render';
-import GeoJSON from 'ol/format/GeoJSON';
+import {fromLonLat} from 'ol/proj';
 
 
 /* 
@@ -15,6 +11,8 @@ import GeoJSON from 'ol/format/GeoJSON';
  */
 
 var hasWSConnection = false;
+var isVisualizing = false;
+var currPath = [];
 var socket;
 // Load default values
 const { app } = require('./config');
@@ -72,14 +70,16 @@ const styles = {
   'route': new Style({
     stroke: new Stroke({
       width: 6,
-      color: [50, 112, 14, 0.89],
+      color: [229, 81, 76, 0.89],
     }),
+    zIndex: 10
   }),
   'trainstop': new Style({
     image: new Icon({
       anchor: [0.5, 1],
       src: './train-stop.png',
     }),
+    zIndex: 20
   }),
   'train': new Style({
     image: new CircleStyle({
@@ -90,16 +90,7 @@ const styles = {
         width: 2,
       }),
     }),
-  }),
-  'debugtrain': new Style({
-    image: new CircleStyle({
-      radius: 7,
-      fill: new Fill({color: 'red'}),
-      stroke: new Stroke({
-        color: 'white',
-        width: 2,
-      }),
-    }),
+    zIndex: 99
   })
 };
 
@@ -115,6 +106,20 @@ const trainMarker = new Feature({
   geometry: trainPosition,
 });
 
+var routeGeom = new LineString(currPath).transform('EPSG:4326', 'EPSG:3857');
+var routeFeature = new Feature({
+  type: 'route',
+  geometry: routeGeom
+});
+var routeTemp = routeGeom.getCoordinates();
+
+
+
+
+
+
+
+
 //Debug markers
 var debugMarkers = [];
 for (let i = 0; i < 25; i++) {
@@ -127,8 +132,17 @@ vectorSource.addFeatures(debugMarkers);
 var dMarkerCount = 0;
 var dFunctionCount = 0;
 
+
+
+
+
+
+
+
+
+
 // Add and display features
-vectorSource.addFeatures([startMarker, trainMarker]);
+vectorSource.addFeatures([startMarker, trainMarker, routeFeature]);
 vectorLayer.setStyle(function (feature) {
   return styles[feature.get('type')];
 });
@@ -139,6 +153,7 @@ vectorLayer.setStyle(function (feature) {
  */
 
 function moveTrain(dX, dY) {
+  /*
   console.log('Debug #%d moveTrain - Coords: x=%f y=%f', dFunctionCount, dX, dY);
   if (dFunctionCount > 2 && dFunctionCount%10 == 0) {
     if (dMarkerCount < debugMarkers.length-1) {
@@ -149,68 +164,32 @@ function moveTrain(dX, dY) {
     }
   }
   dFunctionCount++;
-  
+*/
+  routeTemp.push(fromLonLat([dX, dY]));
+  routeGeom.setCoordinates(routeTemp);
   trainPosition.setCoordinates(fromLonLat([dX, dY]));
   trainMarker.setGeometry(trainPosition);
   vectorLayer.getRenderer().changed();
-  //vectorSource.refresh();
 }
 
-
-/* 
- * EVENTS
- */
-
-// Event: Set start-coordinates
-startCoordBttn.addEventListener('click', function() {
-  // Sanitize input
-  let coordInputValue = sanitizeString(startCoordInput.value);
-  // Check for vaild input
-  let coordArr = coordInputValue.match(/-?[0-9]+\.-?[0-9]+/g);
-  if (coordInputValue && coordArr && coordArr.length == 2) {
-    console.log('valid: %s ; %s', coordArr[0], coordArr[1]);
-    startCoordInput.value = '';
-    triggerPopup('&#9745; Koordinaten gesetzt');
-    // Set new start coordinates
-    startLocation = fromLonLat([parseFloat(coordArr[1]), parseFloat(coordArr[0])]);
-    trainPosition.setCoordinates(startLocation);
-    startMarker.setGeometry(trainPosition);
-    // Move view to new start-location
-    view.animate({
-      center: startLocation,
-      duration: 2000
-    });
-  } else {
-    console.log('invalid');
-    triggerPopup('&#9888; Eingabe fehlerhaft');
-  }
-  function triggerPopup(popupText) {
-    startCoordPopup.innerHTML = popupText;
-    startCoordPopup.classList.add('show');
-    setTimeout(function(){startCoordPopup.classList.remove('show');}, 3000);
-  }
-});
-
-// Event: Establish and handle WS-connection
-tcpBttn.addEventListener('click', function() {
-  // Check for existing WS connection
+function connectServer() {
   if (!hasWSConnection) {
     // Establish WS connection
     tcpBttn.textContent = 'Verbindungsaufbau..';
 
-    //socket = new WebSocket('wss://redr.uber.space/ep');
     socket = new WebSocket(`ws://${app.host}:${app.port}`);
-    
+
     socket.onopen = function(e) {
-      console.log("[ws-open] Connection established. Sending request...");
+      console.log('[ws-open] Connecting Server...');
       // Request connection to server
-      socket.send("connection request");
+      socket.send(JSON.stringify('connection request'));
     };
 
     socket.onerror = function(error) {
-      console.log(`[ws-error] %o`, error.target);
+      console.log('[ws-error] %o', error.target);
       tcpBttn.textContent = 'Verbindung fehlgeschlagen';
       dotOne.style.backgroundColor = 'red';
+      dotTwo.style.backgroundColor = 'red';
     };
 
     socket.onclose = function(event) {
@@ -221,21 +200,42 @@ tcpBttn.addEventListener('click', function() {
       hasWSConnection = false;
     };
 
-    
     socket.onmessage = function(event) {
-      console.log(`[ws-message] Data received from server: %s`, event.data);
-      // Check for request answer or data
-      if (event.data == 'request ok') {
-        tcpBttn.textContent = 'Trennen';
-        dotOne.classList.add('dot-pending');
-        dotTwo.classList.add('dot-pending');
-        hasWSConnection = true;
-        console.log('Connection established!');
-      }
-      var recCoords = JSON.parse(event.data);
-      if (recCoords.length == 2) {
-        // Handle incoming data from simulink
-        moveTrain(recCoords[0], recCoords[1]);
+      console.log('[ws-message] Data received: %s', event.data);
+      var recievedData = JSON.parse(event.data);
+      switch (recievedData) {
+        case 'request ok':
+          tcpBttn.textContent = 'Trennen';
+          dotOne.classList.add('dot-pending');
+          dotTwo.classList.add('dot-pending');
+          hasWSConnection = true;
+          break;
+        case 'new simulation':
+          isVisualizing = true;
+          tcpBttn.textContent = 'Visualisiert...';
+          dotOne.classList.remove('dot-pending');
+          dotTwo.classList.remove('dot-pending');
+          dotOne.style.backgroundColor = 'green';
+          dotTwo.style.backgroundColor = 'green';
+          // Reset route
+          routeTemp = [];
+          routeGeom.setCoordinates(routeTemp);
+          vectorLayer.getRenderer().changed();
+          break;
+        case 'end simulation':
+          isVisualizing = false;
+          tcpBttn.textContent = 'Trennen';
+          dotOne.classList.add('dot-pending');
+          dotTwo.classList.add('dot-pending');
+          break;
+        default:
+          if (recievedData.length == 2) {
+            // Handle incoming data from simulink
+            moveTrain(recievedData[0], recievedData[1]);
+          } else {
+            console.log('[ws-message] Unknown data recieved!');
+          }
+          break;
       }
     };
   } else {
@@ -246,6 +246,56 @@ tcpBttn.addEventListener('click', function() {
     socket.close(1000, 'User terminated the connection');
     hasWSConnection = false;
   }
+}
+connectServer();
+
+function setStartCoordinates() {
+  // Sanitize input
+  let coordArr = sanitizeString(startCoordInput.value);
+  // Check for vaild input
+  if (coordArr && coordArr.length == 2) {
+    if (hasWSConnection) {
+      console.log('Valid new start-coordinates: %s ; %s', coordArr[0], coordArr[1]);
+      startCoordInput.value = '';
+      triggerPopup('&#9745; Koordinaten gesetzt');
+      // Set new start coordinates
+      startLocation = fromLonLat([parseFloat(coordArr[1]), parseFloat(coordArr[0])]);
+      trainPosition.setCoordinates(startLocation);
+      startMarker.setGeometry(new Point(startLocation));
+      // Move view to new start-location
+      view.animate({
+        center: startLocation,
+        duration: 2000
+      });
+      // Tell the server
+      socket.send(JSON.stringify([parseFloat(coordArr[1]), parseFloat(coordArr[0])]));
+    } else {
+      console.log('Could not forward new start-coordinates to server');
+      triggerPopup('&#9888;<br>Bitte zuerst mit Server verbinden');
+    }
+  } else {
+    console.log('Invalid new start-coordinates');
+    triggerPopup('&#9888; Eingabe fehlerhaft');
+  }
+}
+
+
+/* 
+ * EVENTS
+ */
+
+// Event: Set start-coordinates
+startCoordBttn.addEventListener('click', function() {
+  if (!isVisualizing) {
+    setStartCoordinates();
+  } else {
+    triggerPopup('&#9888;<br>Eingabe bei laufender Visualisierung gesperrt');
+  }
+});
+
+// Event: Establish and handle WS-connection
+tcpBttn.addEventListener('click', function() {
+  if (!isVisualizing) { connectServer(); }
 });
 
 
@@ -255,5 +305,11 @@ tcpBttn.addEventListener('click', function() {
 
 function sanitizeString(str){
   str = str.replace(/[^a-z0-9áéíóúñü \.,_-]/gim,"");
-  return str.trim();
+  return str.trim().match(/-?[0-9]+\.-?[0-9]+/g);
+}
+
+function triggerPopup(popupText) {
+  startCoordPopup.innerHTML = popupText;
+  startCoordPopup.classList.add('show');
+  setTimeout(function(){startCoordPopup.classList.remove('show');}, 3000);
 }

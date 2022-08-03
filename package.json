@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "This is the README file.",
   "scripts": {
-    "dev": "parcel src/index.html",
-    "tcp": "node src/js/raw_server.js",
+    "start": "npm run ws & npm run tcp",
+    "ws": "parcel src/index.html",
+    "tcp": "node src/js/server.js",
     "build": "parcel build --public-url ./ src/index.html"
   },
   "repository": {

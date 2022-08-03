@@ -10,16 +10,11 @@ View a live Demo of the current state of the project in your browser. Please not
 
 ## Commands
 
-### Local Server
+Run Parcel and Node
+```
+npm start
+```
 
-Run Parcel and start a webserver:
-```
-npm run dev
-```
-Run NodeJS and start the TCP-server:
-```
-npm run tcp
-```
 
 ## Description
 
@@ -30,7 +25,7 @@ src/
 │   └── style.css
 ├── js/
 │   ├── main.js
-│   ├── raw_server.js
+│   ├── server.js
 │   └── train-stop.png
 └── index.html
 ```
