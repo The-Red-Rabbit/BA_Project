@@ -91,6 +91,17 @@ const styles = {
       }),
     }),
     zIndex: 99
+  }),
+  'markers': new Style({
+    image: new CircleStyle({
+      radius: 4,
+      fill: new Fill({color: 'white'}),
+      stroke: new Stroke({
+        color: 'black',
+        width: 2,
+      }),
+    }),
+    zIndex: 30
   })
 };
 
@@ -124,7 +135,7 @@ var routeTemp = routeGeom.getCoordinates();
 var debugMarkers = [];
 for (let i = 0; i < 25; i++) {
   debugMarkers.push(new Feature({
-    type: 'debugtrain',
+    type: 'markers',
     geometry: new Point(startLocation)
   }));
 }
@@ -153,9 +164,8 @@ vectorLayer.setStyle(function (feature) {
  */
 
 function moveTrain(dX, dY) {
-  /*
-  console.log('Debug #%d moveTrain - Coords: x=%f y=%f', dFunctionCount, dX, dY);
-  if (dFunctionCount > 2 && dFunctionCount%10 == 0) {
+  
+  if (dFunctionCount > 2 && dFunctionCount%20 == 0) {
     if (dMarkerCount < debugMarkers.length-1) {
       debugMarkers[dMarkerCount].setGeometry(new Point(fromLonLat([dX, dY])));
       dMarkerCount++;
@@ -164,7 +174,7 @@ function moveTrain(dX, dY) {
     }
   }
   dFunctionCount++;
-*/
+
   routeTemp.push(fromLonLat([dX, dY]));
   routeGeom.setCoordinates(routeTemp);
   trainPosition.setCoordinates(fromLonLat([dX, dY]));
