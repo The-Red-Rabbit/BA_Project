@@ -62,6 +62,7 @@ wss.on('connection', function connection(ws) {
                     currCoord[0] = ( 67.924 * lonStart - (deltas[0]/1000)) / 67.924
                     currCoord[1] = ( 111.317 * latStart - (deltas[1]/1000)) / 111.317
                     ws.send(JSON.stringify(currCoord));
+                    triggerOnce();
                 } else {
                     //console.count('discarded');
                 }
@@ -82,3 +83,11 @@ wss.on('connection', function connection(ws) {
         });
     });
 });
+
+var triggerFlag = false;
+function triggerOnce() {
+    if (!triggerFlag) {
+        console.log(+ new Date());
+        triggerFlag = true;
+    }
+}

@@ -16,6 +16,8 @@ var currPath = [];
 var socket;
 // Load default values
 const { app } = require('./config');
+// Benchmark
+var bmKoppelung;
 
 
 /* 
@@ -164,7 +166,6 @@ vectorLayer.setStyle(function (feature) {
  */
 
 function moveTrain(dX, dY) {
-  
   if (dFunctionCount > 2 && dFunctionCount%20 == 0) {
     if (dMarkerCount < debugMarkers.length-1) {
       debugMarkers[dMarkerCount].setGeometry(new Point(fromLonLat([dX, dY])));
@@ -180,6 +181,7 @@ function moveTrain(dX, dY) {
   trainPosition.setCoordinates(fromLonLat([dX, dY]));
   trainMarker.setGeometry(trainPosition);
   vectorLayer.getRenderer().changed();
+  triggerOnce();
 }
 
 function connectServer() {
@@ -190,6 +192,7 @@ function connectServer() {
     socket = new WebSocket(`ws://${app.host}:${app.port}`);
 
     socket.onopen = function(e) {
+      bmKoppelung = + new Date();
       console.log('[ws-open] Connecting Server...');
       // Request connection to server
       socket.send(JSON.stringify('connection request'));
@@ -215,6 +218,7 @@ function connectServer() {
       var recievedData = JSON.parse(event.data);
       switch (recievedData) {
         case 'request ok':
+          console.log(+ new Date() - bmKoppelung);
           tcpBttn.textContent = 'Trennen';
           dotOne.classList.add('dot-pending');
           dotTwo.classList.add('dot-pending');
@@ -322,4 +326,12 @@ function triggerPopup(popupText) {
   startCoordPopup.innerHTML = popupText;
   startCoordPopup.classList.add('show');
   setTimeout(function(){startCoordPopup.classList.remove('show');}, 3000);
+}
+
+var triggerFlag = false;
+function triggerOnce() {
+    if (!triggerFlag) {
+        console.log(+ new Date());
+        triggerFlag = true;
+    }
 }
