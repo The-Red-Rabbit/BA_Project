@@ -1,41 +1,30 @@
-# BA_Project
+# Visualisierung für den simulierten Zugverkehr
 
-This is the README file. The project is part of a bachelor thesis. The goal is to simulate a train running on a map.
+Dieses Projekt ist Teil einer Bachelorarbeit und visualisiert in einem Browserfenster Daten aus der BerDiBa-Simulationsumgebung (Simulink).
 
-## Live-Demo
+## Installation
 
-View a live Demo of the current state of the project in your browser. Please note that this is only a development build and does not represent the final product.
+Die Software benötigt die Node.js JavaScript-Laufzeitumgebung. Diese kann hier bezogen werden:
 
-[Live-Demo Trainmap](https://redr.uber.space/zuege)
+[Download Node.js](https://nodejs.dev/)
 
-## Commands
+Nach Installation, den Node-Paketmanager alle Module laden lassen:
+```
+npm install
+```
 
-Run Parcel and Node
+Anschließend das Programm starten und dem Link aus der Konsole folgen:
 ```
 npm start
 ```
 
+## Screenshot der Visualisierung: Lübbenau nach Lübben
 
-## Description
-
-This is the folder- & file-structure:
-```
-src/
-├── css/
-│   └── style.css
-├── js/
-│   ├── main.js
-│   ├── server.js
-│   └── train-stop.png
-└── index.html
-```
-The `main.js` script is embeded in the `index.html` file and is responsible for rendering the map and other frontend tasks. The `raw_server.js` runs on the server and has no UI. It serves as an interface between the application and Matlab/Simulink.
-
+![Ansicht_Visualisierung](vis_410.png)
 
 ## Third party libaries
 
 - [Open Layers](https://github.com/openlayers/openlayers)
-- ...
 
 ## License
 
