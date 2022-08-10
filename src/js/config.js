@@ -1,6 +1,6 @@
 const app = {
-  startLat: 52.525084,
-  startLon: 13.369402,
+  startLat: 51.86279672963583,
+  startLon: 13.961199335983522,
   host: 'localhost',
   port: 8080
 };
