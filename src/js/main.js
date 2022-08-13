@@ -13,11 +13,12 @@ import {fromLonLat} from 'ol/proj';
 var hasWSConnection = false;
 var isVisualizing = false;
 var currPath = [];
+var positionMarkers = [];
+var dMarkerCount = 0;
+var dFunctionCount = 0;
 var socket;
 // Load default values
 const { app } = require('./config');
-// Benchmark
-var bmKoppelung;
 
 
 /* 
@@ -126,36 +127,17 @@ var routeFeature = new Feature({
 });
 var routeTemp = routeGeom.getCoordinates();
 
-
-
-
-
-
-
-
-//Debug markers
-var debugMarkers = [];
+// Position markers
 for (let i = 0; i < 25; i++) {
-  debugMarkers.push(new Feature({
+  positionMarkers.push(new Feature({
     type: 'markers',
     geometry: new Point(startLocation)
   }));
 }
-vectorSource.addFeatures(debugMarkers);
-var dMarkerCount = 0;
-var dFunctionCount = 0;
-
-
-
-
-
-
-
-
-
 
 // Add and display features
 vectorSource.addFeatures([startMarker, trainMarker, routeFeature]);
+vectorSource.addFeatures(positionMarkers);
 vectorLayer.setStyle(function (feature) {
   return styles[feature.get('type')];
 });
@@ -167,8 +149,8 @@ vectorLayer.setStyle(function (feature) {
 
 function moveTrain(dX, dY) {
   if (dFunctionCount > 2 && dFunctionCount%20 == 0) {
-    if (dMarkerCount < debugMarkers.length-1) {
-      debugMarkers[dMarkerCount].setGeometry(new Point(fromLonLat([dX, dY])));
+    if (dMarkerCount < positionMarkers.length-1) {
+      positionMarkers[dMarkerCount].setGeometry(new Point(fromLonLat([dX, dY])));
       dMarkerCount++;
     } else {
       dMarkerCount = 0;
@@ -181,7 +163,6 @@ function moveTrain(dX, dY) {
   trainPosition.setCoordinates(fromLonLat([dX, dY]));
   trainMarker.setGeometry(trainPosition);
   vectorLayer.getRenderer().changed();
-  triggerOnce();
 }
 
 function connectServer() {
@@ -326,12 +307,4 @@ function triggerPopup(popupText) {
   startCoordPopup.innerHTML = popupText;
   startCoordPopup.classList.add('show');
   setTimeout(function(){startCoordPopup.classList.remove('show');}, 3000);
-}
-
-var triggerFlag = false;
-function triggerOnce() {
-    if (!triggerFlag) {
-        console.log(+ new Date());
-        triggerFlag = true;
-    }
 }
